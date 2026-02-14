@@ -1,0 +1,74 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: copr_index
+      POSTGRES_USER: copr
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U copr -d copr_index"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: packages/api/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://copr:${POSTGRES_PASSWORD}@postgres:5432/copr_index
+      GITHUB_TOKEN: ${GITHUB_TOKEN}
+      PORT: "4000"
+    ports:
+      - "4000:4000"
+
+  frontend:
+    build:
+      context: .
+      dockerfile: packages/frontend/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - api
+    environment:
+      API_URL: http://api:4000
+      NEXT_PUBLIC_GISCUS_REPO: ${GISCUS_REPO}
+      NEXT_PUBLIC_GISCUS_REPO_ID: ${GISCUS_REPO_ID}
+      NEXT_PUBLIC_GISCUS_CATEGORY_ID: ${GISCUS_CATEGORY_ID}
+    ports:
+      - "3000:3000"
+
+  sync-worker:
+    build:
+      context: .
+      dockerfile: packages/sync/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://copr:${POSTGRES_PASSWORD}@postgres:5432/copr_index
+      GITHUB_TOKEN: ${GITHUB_TOKEN}
+      COPR_SYNC_INTERVAL_HOURS: "6"
+      STARS_SYNC_INTERVAL_HOURS: "12"
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: tunnel run
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARED_TUNNEL_TOKEN}
+    depends_on:
+      - frontend
+      - api
+
+volumes:
+  pgdata:
