@@ -3,6 +3,8 @@ import { GiscusComments } from "@/components/GiscusComments";
 import { CopyButton } from "@/components/CopyButton";
 import { notFound } from "next/navigation";
 
+export const dynamic = "force-dynamic";
+
 interface ProjectPageProps {
   params: Promise<{ owner: string; name: string }>;
 }

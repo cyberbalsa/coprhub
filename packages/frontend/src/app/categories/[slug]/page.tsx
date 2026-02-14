@@ -1,6 +1,8 @@
 import { getProjects, getCategories } from "@/lib/api-client";
 import { ProjectCard } from "@/components/ProjectCard";
 
+export const dynamic = "force-dynamic";
+
 interface CategoryPageProps {
   params: Promise<{ slug: string }>;
   searchParams: Promise<{ page?: string }>;

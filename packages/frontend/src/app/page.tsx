@@ -2,6 +2,8 @@ import { getProjects, getCategories } from "@/lib/api-client";
 import { ProjectCard } from "@/components/ProjectCard";
 import { SearchBar } from "@/components/SearchBar";
 
+export const dynamic = "force-dynamic";
+
 export default async function HomePage() {
   const [popular, recent, categoriesRes] = await Promise.all([
     getProjects({ sort: "stars", limit: 12 }),

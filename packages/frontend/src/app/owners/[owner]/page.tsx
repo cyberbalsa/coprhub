@@ -1,6 +1,8 @@
 import { getProjects } from "@/lib/api-client";
 import { ProjectCard } from "@/components/ProjectCard";
 
+export const dynamic = "force-dynamic";
+
 interface OwnerPageProps {
   params: Promise<{ owner: string }>;
   searchParams: Promise<{ page?: string }>;

@@ -2,6 +2,8 @@ import { getProjects, getCategories } from "@/lib/api-client";
 import { ProjectCard } from "@/components/ProjectCard";
 import { SearchBar } from "@/components/SearchBar";
 
+export const dynamic = "force-dynamic";
+
 interface SearchPageProps {
   searchParams: Promise<{
     q?: string;

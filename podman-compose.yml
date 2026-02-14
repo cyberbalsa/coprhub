@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: postgres:16-alpine
+    image: docker.io/postgres:16-alpine
     restart: unless-stopped
     volumes:
       - pgdata:/var/lib/postgresql/data
@@ -61,7 +61,7 @@ services:
       STARS_SYNC_INTERVAL_HOURS: "12"
 
   cloudflared:
-    image: cloudflare/cloudflared:latest
+    image: docker.io/cloudflare/cloudflared:latest
     restart: unless-stopped
     command: tunnel run
     environment:
