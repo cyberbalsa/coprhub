@@ -2,6 +2,7 @@ import { eq, isNotNull } from "drizzle-orm";
 import { projects } from "@copr-index/shared";
 import { parseUpstreamUrl } from "@copr-index/shared";
 import type { Db } from "@copr-index/shared";
+import { USER_AGENT } from "./user-agent.js";
 
 export interface UpstreamMeta {
   stars: number;
@@ -16,7 +17,7 @@ const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 export async function fetchGitHubStars(owner: string, repo: string): Promise<UpstreamMeta | null> {
   const headers: Record<string, string> = {
     Accept: "application/vnd.github.v3+json",
-    "User-Agent": "copr-index",
+    "User-Agent": USER_AGENT,
   };
   if (GITHUB_TOKEN) {
     headers["Authorization"] = `Bearer ${GITHUB_TOKEN}`;
@@ -45,7 +46,9 @@ export async function fetchGitHubStars(owner: string, repo: string): Promise<Ups
 
 export async function fetchGitLabStars(host: string, projectPath: string): Promise<UpstreamMeta | null> {
   const encodedPath = encodeURIComponent(projectPath);
-  const res = await fetch(`https://${host}/api/v4/projects/${encodedPath}`);
+  const res = await fetch(`https://${host}/api/v4/projects/${encodedPath}`, {
+    headers: { "User-Agent": USER_AGENT },
+  });
   if (!res.ok) return null;
 
   const data = await res.json();

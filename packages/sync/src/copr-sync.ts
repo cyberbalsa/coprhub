@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 import { projects, packages as packagesTable } from "@copr-index/shared";
 import { extractUpstreamFromTexts } from "@copr-index/shared";
 import type { Db } from "@copr-index/shared";
+import { USER_AGENT } from "./user-agent.js";
 
 const COPR_API_BASE = "https://copr.fedorainfracloud.org/api_3";
 
@@ -58,7 +59,9 @@ export async function syncCoprProjects(db: Db): Promise<number> {
     const url = `${COPR_API_BASE}/project/search?query=*&limit=${limit}&offset=${offset}`;
     console.log(`Fetching: ${url}`);
 
-    const response = await fetch(url);
+    const response = await fetch(url, {
+      headers: { "User-Agent": USER_AGENT },
+    });
     if (!response.ok) {
       console.error(`COPR API error: ${response.status}`);
       break;
@@ -106,7 +109,9 @@ export async function syncCoprProjects(db: Db): Promise<number> {
 
 async function syncProjectPackages(db: Db, owner: string, projectName: string) {
   const url = `${COPR_API_BASE}/package/list?ownername=${owner}&projectname=${projectName}&limit=100`;
-  const response = await fetch(url);
+  const response = await fetch(url, {
+    headers: { "User-Agent": USER_AGENT },
+  });
   if (!response.ok) return;
 
   const data: { items: CoprApiPackage[] } = await response.json();
