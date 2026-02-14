@@ -1,12 +1,13 @@
 {
   "name": "copr-index",
   "private": true,
+  "workspaces": ["packages/*"],
   "scripts": {
-    "dev:api": "pnpm --filter @copr-index/api dev",
-    "dev:frontend": "pnpm --filter @copr-index/frontend dev",
-    "build": "pnpm -r build",
-    "test": "pnpm -r test",
-    "db:generate": "pnpm --filter @copr-index/shared db:generate",
-    "db:migrate": "pnpm --filter @copr-index/shared db:migrate"
+    "dev:api": "bun --filter @copr-index/api dev",
+    "dev:frontend": "bun --filter @copr-index/frontend dev",
+    "build": "bun --filter '*' build",
+    "test": "bun --filter '*' test",
+    "db:generate": "bun --filter @copr-index/shared db:generate",
+    "db:migrate": "bun --filter @copr-index/shared db:migrate"
   }
 }
