@@ -1,16 +1,22 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
+import { swaggerUI } from "@hono/swagger-ui";
 import { healthRouter } from "./routes/health.js";
 import { createProjectsRouter } from "./routes/projects.js";
 import { createCategoriesRouter } from "./routes/categories.js";
 import { createStatsRouter } from "./routes/stats.js";
+import { openApiSpec } from "./openapi.js";
 import { db } from "./db.js";
 
 export const app = new Hono();
 
 app.use("*", logger());
 app.use("*", cors());
+
+// OpenAPI spec and Swagger UI
+app.get("/api/openapi.json", (c) => c.json(openApiSpec));
+app.get("/api", swaggerUI({ url: "/api/openapi.json" }));
 
 app.route("/api/health", healthRouter);
 app.route("/api/projects", createProjectsRouter(db));
