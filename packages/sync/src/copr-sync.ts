@@ -28,9 +28,9 @@ interface CoprApiPackage {
   } | null;
 }
 
-interface CoprSearchResponse {
+interface CoprListResponse {
   items: CoprApiProject[];
-  meta: { limit: number; offset: number; count: number };
+  meta: { limit: number; offset: number; order: string; order_type: string };
 }
 
 export function parseCoprProject(apiProject: CoprApiProject) {
@@ -44,7 +44,9 @@ export function parseCoprProject(apiProject: CoprApiProject) {
     instructions: apiProject.instructions,
     homepage: apiProject.homepage,
     chroots,
-    repoUrl: apiProject.repo_url,
+    repoUrl:
+      apiProject.repo_url ??
+      `https://copr.fedorainfracloud.org/coprs/${apiProject.full_name}/`,
   };
 }
 
@@ -56,7 +58,7 @@ export async function syncCoprProjects(db: Db): Promise<number> {
   console.log("Starting COPR project sync...");
 
   while (true) {
-    const url = `${COPR_API_BASE}/project/search?query=*&limit=${limit}&offset=${offset}`;
+    const url = `${COPR_API_BASE}/project/list?limit=${limit}&offset=${offset}`;
     console.log(`Fetching: ${url}`);
 
     const response = await fetch(url, {
@@ -67,7 +69,7 @@ export async function syncCoprProjects(db: Db): Promise<number> {
       break;
     }
 
-    const data: CoprSearchResponse = await response.json();
+    const data: CoprListResponse = await response.json();
     if (data.items.length === 0) break;
 
     for (const apiProject of data.items) {
@@ -98,8 +100,9 @@ export async function syncCoprProjects(db: Db): Promise<number> {
       totalSynced++;
     }
 
+    console.log(`Synced ${totalSynced} projects so far (offset: ${offset})...`);
     offset += limit;
-    if (offset >= data.meta.count) break;
+    if (data.items.length < limit) break;
     await sleep(500);
   }
 
