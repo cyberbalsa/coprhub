@@ -166,5 +166,72 @@ export function createProjectsRouter(db: Db) {
     return c.json({ data: pkgs satisfies PackageInfo[] });
   });
 
+  // Comments proxy - fetches from Discourse API and caches
+  const commentsCache = new Map<string, { data: unknown; expiry: number }>();
+  const CACHE_TTL = 15 * 60 * 1000; // 15 minutes
+
+  router.get("/:owner/:name/comments", async (c) => {
+    const { owner, name } = c.req.param();
+    const cacheKey = `${owner}/${name}`;
+    const cached = commentsCache.get(cacheKey);
+    if (cached && cached.expiry > Date.now()) {
+      return c.json(cached.data);
+    }
+
+    const project = await db
+      .select({ discourseTopicId: projects.discourseTopicId })
+      .from(projects)
+      .where(and(eq(projects.owner, owner), eq(projects.name, name)))
+      .limit(1);
+
+    if (project.length === 0) {
+      return c.json({ error: "Project not found" }, 404);
+    }
+
+    const topicId = project[0].discourseTopicId;
+    if (!topicId) {
+      const result = { data: [], topicUrl: null };
+      commentsCache.set(cacheKey, { data: result, expiry: Date.now() + CACHE_TTL });
+      return c.json(result);
+    }
+
+    try {
+      const res = await fetch(
+        `https://discussion.fedoraproject.org/t/${topicId}.json`,
+        { headers: { "User-Agent": "COPRHub/1.0 (https://coprhub.org)" } }
+      );
+      if (!res.ok) {
+        const result = { data: [], topicUrl: `https://discussion.fedoraproject.org/t/${topicId}` };
+        commentsCache.set(cacheKey, { data: result, expiry: Date.now() + CACHE_TTL });
+        return c.json(result);
+      }
+
+      const topic = await res.json();
+      const posts = (topic.post_stream?.posts ?? []).map((p: any) => ({
+        id: p.id,
+        username: p.username,
+        avatarUrl: p.avatar_template
+          ? `https://discussion.fedoraproject.org${p.avatar_template.replace("{size}", "48")}`
+          : null,
+        content: p.cooked,
+        createdAt: p.created_at,
+        likeCount: p.like_count ?? 0,
+        replyCount: p.reply_count ?? 0,
+        postNumber: p.post_number,
+      }));
+
+      const result = {
+        data: posts,
+        topicUrl: `https://discussion.fedoraproject.org/t/${topic.slug}/${topicId}`,
+        title: topic.title,
+      };
+
+      commentsCache.set(cacheKey, { data: result, expiry: Date.now() + CACHE_TTL });
+      return c.json(result);
+    } catch {
+      return c.json({ data: [], topicUrl: `https://discussion.fedoraproject.org/t/${topicId}` });
+    }
+  });
+
   return router;
 }

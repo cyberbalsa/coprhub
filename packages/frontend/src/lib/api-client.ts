@@ -56,3 +56,31 @@ export async function getCategories(): Promise<{
 export async function getStats(): Promise<StatsResponse> {
   return apiFetch("/api/stats");
 }
+
+export interface CommentData {
+  id: number;
+  username: string;
+  avatarUrl: string | null;
+  content: string;
+  createdAt: string;
+  likeCount: number;
+  replyCount: number;
+  postNumber: number;
+}
+
+export interface CommentsResponse {
+  data: CommentData[];
+  topicUrl: string | null;
+  title?: string;
+}
+
+export async function getProjectComments(
+  owner: string,
+  name: string
+): Promise<CommentsResponse> {
+  try {
+    return await apiFetch(`/api/projects/${owner}/${name}/comments`);
+  } catch {
+    return { data: [], topicUrl: null };
+  }
+}

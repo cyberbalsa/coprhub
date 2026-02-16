@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { getProject, getProjectPackages } from "@/lib/api-client";
+import { getProject, getProjectPackages, getProjectComments } from "@/lib/api-client";
 import { DiscourseComments } from "@/components/DiscourseComments";
 import { ReadmeDisplay } from "@/components/ReadmeDisplay";
 import { CopyButton } from "@/components/CopyButton";
@@ -35,7 +35,10 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
     notFound();
   }
 
-  const { data: packages } = await getProjectPackages(owner, name);
+  const [{ data: packages }, commentsData] = await Promise.all([
+    getProjectPackages(owner, name),
+    getProjectComments(owner, name),
+  ]);
   const enableCommand = `sudo dnf copr enable ${owner}/${name}`;
 
   return (
@@ -142,7 +145,12 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
 
       <section className="comments-section">
         <h2>Community</h2>
-        <DiscourseComments owner={owner} name={name} />
+        <DiscourseComments
+          owner={owner}
+          name={name}
+          comments={commentsData.data}
+          topicUrl={commentsData.topicUrl}
+        />
       </section>
     </div>
   );
