@@ -1,5 +1,6 @@
 export interface ProjectSummary {
   id: number;
+  coprId: number | null;
   fullName: string;
   owner: string;
   name: string;
@@ -11,6 +12,12 @@ export interface ProjectSummary {
   popularityScore: number;
   coprVotes: number;
   coprDownloads: number;
+  coprRepoEnables: number;
+  discourseLikes: number;
+  discourseViews: number;
+  discourseReplies: number;
+  lastBuildAt: string | null;
+  updatedAt: string | null;
 }
 
 export interface ProjectDetail extends ProjectSummary {
@@ -21,14 +28,14 @@ export interface ProjectDetail extends ProjectSummary {
   upstreamForks: number;
   upstreamDescription: string | null;
   upstreamTopics: string[] | null;
-  coprRepoEnables: number;
-  discourseLikes: number;
-  discourseViews: number;
-  discourseReplies: number;
   upstreamReadme: string | null;
+  discourseTopicId: number | null;
   lastSyncedAt: string | null;
-  lastBuildAt: string | null;
   createdAt: string | null;
+  readmeSyncedAt: string | null;
+  votesSyncedAt: string | null;
+  starsSyncedAt: string | null;
+  discourseSyncedAt: string | null;
 }
 
 export interface PackageInfo {
@@ -62,11 +69,20 @@ export interface StatsResponse {
 
 export interface ProjectsQuery {
   q?: string;
-  sort?: "popularity" | "stars" | "votes" | "downloads" | "likes" | "views" | "replies" | "name" | "updated";
+  sort?: "id" | "coprId" | "popularity" | "stars" | "forks" | "votes" | "downloads" | "enables" | "likes" | "views" | "replies" | "discourseTopicId" | "name" | "owner" | "language" | "provider" | "updated" | "created" | "lastBuild" | "lastSynced" | "starsSynced" | "readmeSynced" | "votesSynced" | "discourseSynced";
   order?: "asc" | "desc";
   category?: string;
   owner?: string;
+  name?: string;
+  fullName?: string;
   language?: string;
+  provider?: string;
+  description?: string;
+  instructions?: string;
+  homepage?: string;
+  upstreamUrl?: string;
+  upstreamDescription?: string;
+  upstreamReadme?: string;
   page?: number;
   limit?: number;
 }
