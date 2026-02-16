@@ -5,6 +5,14 @@
 export function convertToOas3_0(spec: Record<string, unknown>): Record<string, unknown> {
   const clone = JSON.parse(JSON.stringify(spec));
   clone.openapi = "3.0.0";
+
+  // CF does not support relative server URLs — filter them out
+  if (Array.isArray(clone.servers)) {
+    clone.servers = clone.servers.filter(
+      (s: { url?: string }) => s.url && /^https?:\/\//.test(s.url),
+    );
+  }
+
   walkNode(clone);
   return clone;
 }

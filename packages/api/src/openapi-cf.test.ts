@@ -73,6 +73,12 @@ describe("convertToOas3_0", () => {
     const convertedSchemas = Object.keys(converted.components.schemas);
     expect(convertedSchemas).toEqual(originalSchemas);
   });
+
+  it("strips relative server URLs", () => {
+    expect(converted.servers.every((s: { url: string }) => /^https?:\/\//.test(s.url))).toBe(true);
+    expect(converted.servers).toHaveLength(1);
+    expect(converted.servers[0].url).toBe("https://api.coprhub.org");
+  });
 });
 
 describe("GET /api/cf", () => {
