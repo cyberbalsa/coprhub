@@ -71,11 +71,13 @@ podman exec -i copr-index_postgres_1 \
 
 ## Database
 
-Schema defined in `packages/shared/src/schema.ts`. Four tables:
+Schema defined in `packages/shared/src/schema.ts`. Six tables:
 - `projects` - COPR projects with upstream metadata, search vector, and `last_build_at`
 - `packages` - RPM packages belonging to projects
 - `categories` - browsing categories
 - `project_categories` - many-to-many junction
+- `sync_jobs` - Tracks last completion time and duration per sync job
+- `discourse_cache` - Caches Discourse API responses per project (12h TTL)
 
 Full-text search uses a trigger (`packages/shared/drizzle/0001_search_vector.sql`) that auto-updates `search_vector` on INSERT/UPDATE with weighted fields (A=name, B=owner, C=descriptions, D=language/topics).
 
@@ -94,12 +96,24 @@ Constants and formula defined in `packages/sync/src/popularity.ts`. SQL equivale
 All routes prefixed with `/api`:
 - `GET /api` - Swagger UI
 - `GET /api/openapi.json` - OpenAPI 3.1.0 spec
-- `GET /api/projects` - List/search projects (params: q, sort, category, owner, page, limit)
-- `GET /api/projects/:owner/:name` - Project detail with packages
+- `GET /api/projects` - List/search projects (see filtering/sorting below)
+- `GET /api/projects/:owner/:name` - Project detail (all DB fields exposed)
+- `GET /api/projects/:owner/:name/packages` - RPM packages for a project
+- `GET /api/projects/:owner/:name/comments` - Discourse comments (cached 12h)
 - `GET /api/categories` - All categories with project counts
-- `GET /api/categories/:slug` - Single category info
+- `GET /api/categories/:slug` - Projects in a category
 - `GET /api/stats` - Index statistics
-- `GET /api/health` - Health check
+- `GET /api/health` - Health check with sync job status and data freshness
+
+### Project List Filtering
+
+All text filters support ILIKE wildcards (`*` → `%`). Without `*`, exact match is used.
+
+**Filter params:** `q` (full-text), `owner`, `name`, `fullName`, `language`, `provider`, `description`, `instructions`, `homepage`, `upstreamUrl`, `upstreamDescription`, `upstreamReadme`, `category` (slug, join-based)
+
+**Sort params (24 values):** `id`, `coprId`, `popularity` (default), `stars`, `forks`, `votes`, `downloads`, `enables`, `likes`, `views`, `replies`, `discourseTopicId`, `name`, `owner`, `language`, `provider`, `updated`, `created`, `lastBuild`, `lastSynced`, `starsSynced`, `readmeSynced`, `votesSynced`, `discourseSynced`
+
+**Pagination:** `page` (default 1), `limit` (default 24, max 100), `order` (`asc`/`desc`, default `desc`)
 
 ## Sync Worker
 
