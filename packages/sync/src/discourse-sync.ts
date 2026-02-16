@@ -1,7 +1,8 @@
-import { eq } from "drizzle-orm";
-import { projects } from "@coprhub/shared";
+import { eq, or, isNull, lt, sql } from "drizzle-orm";
+import { projects, syncJobs } from "@coprhub/shared";
 import type { Db } from "@coprhub/shared";
 import { USER_AGENT } from "./user-agent.js";
+import type { SyncOptions } from "./ttl.js";
 
 const DISCOURSE_BASE = "https://discussion.fedoraproject.org";
 
@@ -70,8 +71,17 @@ function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-export async function syncAllDiscourseStats(db: Db): Promise<void> {
+export async function syncAllDiscourseStats(db: Db, options: SyncOptions): Promise<void> {
   console.log("Syncing Discourse stats...");
+
+  const ttlCutoff = new Date(Date.now() - options.ttlHours * 60 * 60 * 1000);
+
+  const ttlFilter = options.forceSync
+    ? undefined
+    : or(
+        isNull(projects.discourseSyncedAt),
+        lt(projects.discourseSyncedAt, ttlCutoff),
+      );
 
   const allProjects = await db
     .select({
@@ -80,7 +90,22 @@ export async function syncAllDiscourseStats(db: Db): Promise<void> {
       name: projects.name,
       discourseTopicId: projects.discourseTopicId,
     })
+    .from(projects)
+    .where(ttlFilter);
+
+  // Count total for logging
+  const [{ total }] = await db
+    .select({ total: sql<number>`count(*)`.mapWith(Number) })
     .from(projects);
+
+  const skipped = total - allProjects.length;
+  if (skipped > 0) {
+    console.log(
+      `Discourse sync: skipping ${skipped} of ${total} projects (within ${options.ttlHours}h TTL), syncing ${allProjects.length} stale`
+    );
+  } else if (options.forceSync) {
+    console.log(`Discourse sync: FORCE_SYNC enabled, syncing all ${total} projects`);
+  }
 
   let discovered = 0;
   let updated = 0;
@@ -93,6 +118,7 @@ export async function syncAllDiscourseStats(db: Db): Promise<void> {
           discourseLikes: stats.likes,
           discourseViews: stats.views,
           discourseReplies: stats.replies,
+          discourseSyncedAt: new Date(),
         }).where(eq(projects.id, project.id));
         updated++;
       }
@@ -104,12 +130,26 @@ export async function syncAllDiscourseStats(db: Db): Promise<void> {
           discourseLikes: topic.likes,
           discourseViews: topic.views,
           discourseReplies: topic.replies,
+          discourseSyncedAt: new Date(),
         }).where(eq(projects.id, project.id));
         discovered++;
+      } else {
+        // No topic found — still mark as synced so we don't re-search every run
+        await db.update(projects).set({
+          discourseSyncedAt: new Date(),
+        }).where(eq(projects.id, project.id));
       }
     }
     await sleep(200);
   }
+
+  await db
+    .insert(syncJobs)
+    .values({ jobName: "discourse_sync", lastCompletedAt: new Date(), durationMs: null })
+    .onConflictDoUpdate({
+      target: syncJobs.jobName,
+      set: { lastCompletedAt: new Date() },
+    });
 
   console.log(`Discourse sync: ${discovered} discovered, ${updated} updated`);
 }

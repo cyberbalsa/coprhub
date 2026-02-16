@@ -1,8 +1,10 @@
-import { eq, isNotNull } from "drizzle-orm";
+import { eq, isNotNull, and, or, isNull, lt, sql } from "drizzle-orm";
 import { projects } from "@coprhub/shared";
 import { parseUpstreamUrl } from "@coprhub/shared";
 import type { Db } from "@coprhub/shared";
 import { USER_AGENT } from "./user-agent.js";
+import { syncJobs } from "@coprhub/shared";
+import type { SyncOptions } from "./ttl.js";
 
 const MAX_README_SIZE = 5 * 1024; // 5KB
 
@@ -95,8 +97,21 @@ export async function fetchGitLabReadme(host: string, projectPath: string): Prom
   return null;
 }
 
-export async function syncAllStars(db: Db): Promise<number> {
+export async function syncAllStars(db: Db, options: SyncOptions): Promise<number> {
   console.log("Starting star sync...");
+
+  const ttlCutoff = new Date(Date.now() - options.ttlHours * 60 * 60 * 1000);
+
+  const baseFilter = isNotNull(projects.upstreamUrl);
+  const ttlFilter = options.forceSync
+    ? baseFilter
+    : and(
+        baseFilter,
+        or(
+          isNull(projects.starsSyncedAt),
+          lt(projects.starsSyncedAt, ttlCutoff),
+        ),
+      );
 
   const projectsWithUpstream = await db
     .select({
@@ -105,7 +120,22 @@ export async function syncAllStars(db: Db): Promise<number> {
       upstreamProvider: projects.upstreamProvider,
     })
     .from(projects)
+    .where(ttlFilter);
+
+  // Count total for logging
+  const [{ total }] = await db
+    .select({ total: sql<number>`count(*)`.mapWith(Number) })
+    .from(projects)
     .where(isNotNull(projects.upstreamUrl));
+
+  const skipped = total - projectsWithUpstream.length;
+  if (skipped > 0) {
+    console.log(
+      `Stars sync: skipping ${skipped} of ${total} projects (within ${options.ttlHours}h TTL), syncing ${projectsWithUpstream.length} stale`
+    );
+  } else if (options.forceSync) {
+    console.log(`Stars sync: FORCE_SYNC enabled, syncing all ${total} projects`);
+  }
 
   let synced = 0;
 
@@ -152,6 +182,16 @@ export async function syncAllStars(db: Db): Promise<number> {
   }
 
   console.log(`Star sync complete. Updated ${synced} projects.`);
+
+  // Record job completion for observability
+  await db
+    .insert(syncJobs)
+    .values({ jobName: "stars_sync", lastCompletedAt: new Date(), durationMs: null })
+    .onConflictDoUpdate({
+      target: syncJobs.jobName,
+      set: { lastCompletedAt: new Date() },
+    });
+
   return synced;
 }
 

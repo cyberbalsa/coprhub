@@ -1,6 +1,8 @@
-import { sql } from "drizzle-orm";
+import { sql, eq } from "drizzle-orm";
 import type { Db } from "@coprhub/shared";
+import { syncJobs } from "@coprhub/shared";
 import { USER_AGENT } from "./user-agent.js";
+import { shouldSkipSync, type SyncOptions } from "./ttl.js";
 import { writeFile, unlink } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
@@ -102,8 +104,22 @@ const AGG_SQL = `
   CREATE INDEX agg_chroots_idx ON agg_chroots(copr_id);
 `;
 
-export async function syncFromDump(db: Db): Promise<void> {
+export async function syncFromDump(db: Db, options: SyncOptions): Promise<void> {
   console.log("Starting dump-based sync...");
+
+  // Check job-level TTL
+  const [lastRun] = await db
+    .select({ lastCompletedAt: syncJobs.lastCompletedAt })
+    .from(syncJobs)
+    .where(eq(syncJobs.jobName, "dump_sync"));
+
+  if (shouldSkipSync(lastRun?.lastCompletedAt ?? null, options.ttlHours, options.forceSync)) {
+    const hoursAgo = ((Date.now() - lastRun!.lastCompletedAt.getTime()) / 3600000).toFixed(1);
+    console.log(`Dump sync: skipped (last run ${hoursAgo}h ago, TTL is ${options.ttlHours}h)`);
+    return;
+  }
+
+  const startTime = Date.now();
 
   const dumpUrl = await findLatestDumpUrl();
   const dumpPath = await downloadDump(dumpUrl);
@@ -299,5 +315,13 @@ export async function syncFromDump(db: Db): Promise<void> {
     console.log("Cleanup complete.");
   }
 
-  console.log("Dump-based sync complete.");
+  const durationMs = Date.now() - startTime;
+  await db
+    .insert(syncJobs)
+    .values({ jobName: "dump_sync", lastCompletedAt: new Date(), durationMs })
+    .onConflictDoUpdate({
+      target: syncJobs.jobName,
+      set: { lastCompletedAt: new Date(), durationMs },
+    });
+  console.log(`Dump sync complete (${(durationMs / 60000).toFixed(1)}m).`);
 }

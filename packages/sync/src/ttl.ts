@@ -1,3 +1,8 @@
+export interface SyncOptions {
+  ttlHours: number;
+  forceSync: boolean;
+}
+
 /**
  * Check if a sync should be skipped based on TTL.
  * Returns true if the last sync was within the TTL window and forceSync is not set.
