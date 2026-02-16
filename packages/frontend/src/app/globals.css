@@ -348,6 +348,11 @@ header nav a:first-child {
   opacity: 1;
 }
 
+.project-header .tooltip::after {
+  bottom: auto;
+  top: calc(100% + 8px);
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .browse-layout {
