@@ -72,12 +72,22 @@ podman exec -i copr-index_postgres_1 \
 ## Database
 
 Schema defined in `packages/shared/src/schema.ts`. Four tables:
-- `projects` - COPR projects with upstream metadata and search vector
+- `projects` - COPR projects with upstream metadata, search vector, and `last_build_at`
 - `packages` - RPM packages belonging to projects
 - `categories` - browsing categories
 - `project_categories` - many-to-many junction
 
 Full-text search uses a trigger (`packages/shared/drizzle/0001_search_vector.sql`) that auto-updates `search_vector` on INSERT/UPDATE with weighted fields (A=name, B=owner, C=descriptions, D=language/topics).
+
+### Popularity Score
+
+Popularity score is a weighted sum of stars, votes, downloads, repo enables, and discourse metrics, multiplied by a **staleness decay** based on `last_build_at`:
+- **7-day grace period** — no penalty for recently built projects
+- **Exponential decay** — `max(0.05, exp(-3.0 * (days - 7) / 83))` after grace period
+- **95% cap at 90 days** — dormant projects retain only 5% of their base score
+- **NULL `last_build_at`** — no penalty (build date unknown)
+
+Constants and formula defined in `packages/sync/src/popularity.ts`. SQL equivalents exist in `recomputeAllPopularityScores()` and inline in `dump-sync.ts`.
 
 ## API Endpoints
 
@@ -94,7 +104,7 @@ All routes prefixed with `/api`:
 ## Sync Worker
 
 Runs three sync jobs on configurable intervals:
-1. **Dump sync** (every 24h) - imports COPR database dump with all projects, packages, votes, downloads
+1. **Dump sync** (every 24h) - imports COPR database dump with all projects, packages, votes, downloads, and last build dates; recomputes popularity scores with staleness decay
 2. **Star sync** (every 12h) - fetches GitHub/GitLab stars for projects with detected upstream URLs
 3. **Discourse sync** (every 24h) - fetches Discourse topic stats (likes, views, replies)
 
