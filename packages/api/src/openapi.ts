@@ -31,7 +31,7 @@ export const openApiSpec = {
         tags: ["Projects"],
         summary: "List and search projects",
         description:
-          "Returns a paginated list of COPR projects. Supports full-text search, filtering by owner/language/category, and sorting by stars, name, or update date.",
+          "Returns a paginated list of COPR projects. Supports full-text search, ILIKE wildcard filtering (use * as wildcard) on text fields, and sorting by any column.",
         parameters: [
           {
             name: "q",
@@ -43,7 +43,11 @@ export const openApiSpec = {
             name: "sort",
             in: "query",
             description: "Sort field",
-            schema: { type: "string", enum: ["stars", "name", "updated"], default: "stars" },
+            schema: {
+              type: "string",
+              enum: ["id", "coprId", "popularity", "stars", "forks", "votes", "downloads", "enables", "likes", "views", "replies", "discourseTopicId", "name", "owner", "language", "provider", "updated", "created", "lastBuild", "lastSynced", "starsSynced", "readmeSynced", "votesSynced", "discourseSynced"],
+              default: "popularity",
+            },
           },
           {
             name: "order",
@@ -60,13 +64,67 @@ export const openApiSpec = {
           {
             name: "owner",
             in: "query",
-            description: "Filter by COPR owner username",
+            description: "Filter by COPR owner username (supports * wildcard for ILIKE)",
             schema: { type: "string" },
           },
           {
             name: "language",
             in: "query",
-            description: "Filter by upstream primary language",
+            description: "Filter by upstream primary language (supports * wildcard for ILIKE)",
+            schema: { type: "string" },
+          },
+          {
+            name: "name",
+            in: "query",
+            description: "Filter by project name (supports * wildcard for ILIKE)",
+            schema: { type: "string" },
+          },
+          {
+            name: "fullName",
+            in: "query",
+            description: "Filter by owner/name (supports * wildcard for ILIKE)",
+            schema: { type: "string" },
+          },
+          {
+            name: "provider",
+            in: "query",
+            description: "Filter by upstream provider (supports * wildcard for ILIKE)",
+            schema: { type: "string" },
+          },
+          {
+            name: "description",
+            in: "query",
+            description: "Filter by description (supports * wildcard for ILIKE)",
+            schema: { type: "string" },
+          },
+          {
+            name: "instructions",
+            in: "query",
+            description: "Filter by instructions text (supports * wildcard for ILIKE)",
+            schema: { type: "string" },
+          },
+          {
+            name: "homepage",
+            in: "query",
+            description: "Filter by homepage URL (supports * wildcard for ILIKE)",
+            schema: { type: "string" },
+          },
+          {
+            name: "upstreamUrl",
+            in: "query",
+            description: "Filter by upstream URL (supports * wildcard for ILIKE)",
+            schema: { type: "string" },
+          },
+          {
+            name: "upstreamDescription",
+            in: "query",
+            description: "Filter by upstream description (supports * wildcard for ILIKE)",
+            schema: { type: "string" },
+          },
+          {
+            name: "upstreamReadme",
+            in: "query",
+            description: "Filter by upstream readme content (supports * wildcard for ILIKE)",
             schema: { type: "string" },
           },
           {
@@ -177,6 +235,45 @@ export const openApiSpec = {
                     },
                   },
                 },
+              },
+            },
+          },
+          "404": {
+            description: "Project not found",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/Error" },
+              },
+            },
+          },
+        },
+      },
+    },
+    "/api/projects/{owner}/{name}/comments": {
+      get: {
+        tags: ["Projects"],
+        summary: "Get comments for a project",
+        description: "Returns Discourse comments for a COPR project, cached for 12 hours.",
+        parameters: [
+          {
+            name: "owner",
+            in: "path",
+            required: true,
+            schema: { type: "string" },
+          },
+          {
+            name: "name",
+            in: "path",
+            required: true,
+            schema: { type: "string" },
+          },
+        ],
+        responses: {
+          "200": {
+            description: "Comments list",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/CommentsResponse" },
               },
             },
           },
@@ -307,6 +404,7 @@ export const openApiSpec = {
         type: "object",
         properties: {
           id: { type: "integer" },
+          coprId: { type: ["integer", "null"] },
           fullName: { type: "string", examples: ["atim/lazygit"] },
           owner: { type: "string", examples: ["atim"] },
           name: { type: "string", examples: ["lazygit"] },
@@ -318,6 +416,15 @@ export const openApiSpec = {
           },
           upstreamStars: { type: "integer", examples: [42000] },
           upstreamLanguage: { type: ["string", "null"], examples: ["Go"] },
+          popularityScore: { type: "integer" },
+          coprVotes: { type: "integer" },
+          coprDownloads: { type: "integer" },
+          coprRepoEnables: { type: "integer" },
+          discourseLikes: { type: "integer" },
+          discourseViews: { type: "integer" },
+          discourseReplies: { type: "integer" },
+          lastBuildAt: { type: ["string", "null"], format: "date-time" },
+          updatedAt: { type: ["string", "null"], format: "date-time" },
         },
       },
       ProjectDetail: {
@@ -338,8 +445,14 @@ export const openApiSpec = {
             type: ["array", "null"],
             items: { type: "string" },
           },
+          upstreamReadme: { type: ["string", "null"] },
+          discourseTopicId: { type: ["integer", "null"] },
           lastSyncedAt: { type: ["string", "null"], format: "date-time" },
           createdAt: { type: ["string", "null"], format: "date-time" },
+          readmeSyncedAt: { type: ["string", "null"], format: "date-time" },
+          votesSyncedAt: { type: ["string", "null"], format: "date-time" },
+          starsSyncedAt: { type: ["string", "null"], format: "date-time" },
+          discourseSyncedAt: { type: ["string", "null"], format: "date-time" },
         },
       },
       PackageInfo: {
@@ -390,6 +503,30 @@ export const openApiSpec = {
         type: "object",
         properties: {
           error: { type: "string" },
+        },
+      },
+      CommentPost: {
+        type: "object",
+        properties: {
+          id: { type: "integer" },
+          username: { type: "string" },
+          avatarUrl: { type: ["string", "null"], format: "uri" },
+          content: { type: "string", description: "HTML content from Discourse" },
+          createdAt: { type: "string", format: "date-time" },
+          likeCount: { type: "integer" },
+          replyCount: { type: "integer" },
+          postNumber: { type: "integer" },
+        },
+      },
+      CommentsResponse: {
+        type: "object",
+        properties: {
+          data: {
+            type: "array",
+            items: { $ref: "#/components/schemas/CommentPost" },
+          },
+          topicUrl: { type: ["string", "null"], format: "uri" },
+          title: { type: "string" },
         },
       },
     },
