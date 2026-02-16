@@ -31,6 +31,17 @@ export const projects = pgTable(
     upstreamDescription: text("upstream_description"),
     upstreamLanguage: text("upstream_language"),
     upstreamTopics: jsonb("upstream_topics").$type<string[]>(),
+    upstreamReadme: text("upstream_readme"),
+    coprVotes: integer("copr_votes").default(0),
+    coprDownloads: integer("copr_downloads").default(0),
+    coprRepoEnables: integer("copr_repo_enables").default(0),
+    discourseTopicId: integer("discourse_topic_id"),
+    discourseLikes: integer("discourse_likes").default(0),
+    discourseViews: integer("discourse_views").default(0),
+    discourseReplies: integer("discourse_replies").default(0),
+    popularityScore: integer("popularity_score").default(0),
+    readmeSyncedAt: timestamp("readme_synced_at"),
+    votesSyncedAt: timestamp("votes_synced_at"),
     searchVector: text("search_vector"),
     lastSyncedAt: timestamp("last_synced_at"),
     starsSyncedAt: timestamp("stars_synced_at"),
@@ -43,6 +54,7 @@ export const projects = pgTable(
     index("projects_full_name_idx").on(table.fullName),
     index("projects_owner_idx").on(table.owner),
     index("projects_updated_at_idx").on(table.updatedAt),
+    index("projects_popularity_score_idx").on(table.popularityScore),
   ]
 );
 
