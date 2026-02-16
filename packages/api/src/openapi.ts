@@ -378,7 +378,7 @@ export const openApiSpec = {
       get: {
         tags: ["Health"],
         summary: "Health check",
-        description: "Returns service status and timestamp.",
+        description: "Returns service status, sync job history, and data freshness metrics.",
         responses: {
           "200": {
             description: "Service is healthy",
@@ -389,6 +389,25 @@ export const openApiSpec = {
                   properties: {
                     status: { type: "string", enum: ["ok"] },
                     timestamp: { type: "string", format: "date-time" },
+                    sync: {
+                      type: "object",
+                      description: "Last completion time and duration for each sync job",
+                      additionalProperties: {
+                        type: "object",
+                        properties: {
+                          lastCompletedAt: { type: "string", format: "date-time" },
+                          durationMs: { type: ["integer", "null"] },
+                        },
+                      },
+                    },
+                    data: {
+                      type: "object",
+                      properties: {
+                        totalProjects: { type: "integer" },
+                        oldestUpdatedAt: { type: ["string", "null"], format: "date-time" },
+                        newestUpdatedAt: { type: ["string", "null"], format: "date-time" },
+                      },
+                    },
                   },
                 },
               },

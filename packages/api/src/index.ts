@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import { swaggerUI } from "@hono/swagger-ui";
-import { healthRouter } from "./routes/health.js";
+import { createHealthRouter } from "./routes/health.js";
 import { createProjectsRouter } from "./routes/projects.js";
 import { createCategoriesRouter } from "./routes/categories.js";
 import { createStatsRouter } from "./routes/stats.js";
@@ -18,7 +18,7 @@ app.use("*", cors());
 app.get("/api/openapi.json", (c) => c.json(openApiSpec));
 app.get("/api", swaggerUI({ url: "/api/openapi.json" }));
 
-app.route("/api/health", healthRouter);
+app.route("/api/health", createHealthRouter(db));
 app.route("/api/projects", createProjectsRouter(db));
 app.route("/api/categories", createCategoriesRouter(db));
 app.route("/api/stats", createStatsRouter(db));
