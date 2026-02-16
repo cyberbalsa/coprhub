@@ -9,6 +9,7 @@ import {
 } from "@coprhub/shared";
 import type { Db } from "@coprhub/shared";
 import type { ProjectsQuery, PaginatedResponse, ProjectSummary, ProjectDetail, PackageInfo } from "@coprhub/shared";
+import { buildTextFilter } from "../filters.js";
 
 export function createProjectsRouter(db: Db) {
   const router = new Hono();
@@ -20,14 +21,42 @@ export function createProjectsRouter(db: Db) {
       order: (c.req.query("order") as ProjectsQuery["order"]) || "desc",
       category: c.req.query("category"),
       owner: c.req.query("owner"),
+      name: c.req.query("name"),
+      fullName: c.req.query("fullName"),
       language: c.req.query("language"),
+      provider: c.req.query("provider"),
+      description: c.req.query("description"),
+      instructions: c.req.query("instructions"),
+      homepage: c.req.query("homepage"),
+      upstreamUrl: c.req.query("upstreamUrl"),
+      upstreamDescription: c.req.query("upstreamDescription"),
+      upstreamReadme: c.req.query("upstreamReadme"),
       page: parseInt(c.req.query("page") || "1", 10),
       limit: Math.min(parseInt(c.req.query("limit") || "24", 10), 100),
     };
 
     const conditions: any[] = [];
-    if (query.owner) conditions.push(eq(projects.owner, query.owner));
-    if (query.language) conditions.push(eq(projects.upstreamLanguage, query.language));
+
+    // ILIKE text filters (supports * wildcards)
+    const textFilters: [typeof projects.owner, string | undefined][] = [
+      [projects.owner, query.owner],
+      [projects.name, query.name],
+      [projects.fullName, query.fullName],
+      [projects.upstreamLanguage, query.language],
+      [projects.upstreamProvider, query.provider],
+      [projects.description, query.description],
+      [projects.instructions, query.instructions],
+      [projects.homepage, query.homepage],
+      [projects.upstreamUrl, query.upstreamUrl],
+      [projects.upstreamDescription, query.upstreamDescription],
+      [projects.upstreamReadme, query.upstreamReadme],
+    ];
+    for (const [col, val] of textFilters) {
+      const f = buildTextFilter(col, val);
+      if (f) conditions.push(f);
+    }
+
+    // Full-text search
     if (query.q) {
       conditions.push(
         sql`${projects.searchVector}::tsvector @@ plainto_tsquery('english', ${query.q})`
@@ -37,15 +66,30 @@ export function createProjectsRouter(db: Db) {
     const where = conditions.length > 0 ? and(...conditions) : undefined;
 
     const orderMap: Record<string, any> = {
+      id: projects.id,
+      coprId: projects.coprId,
       popularity: projects.popularityScore,
       stars: projects.upstreamStars,
+      forks: projects.upstreamForks,
       votes: projects.coprVotes,
       downloads: projects.coprDownloads,
+      enables: projects.coprRepoEnables,
       likes: projects.discourseLikes,
       views: projects.discourseViews,
       replies: projects.discourseReplies,
+      discourseTopicId: projects.discourseTopicId,
       name: projects.fullName,
+      owner: projects.owner,
+      language: projects.upstreamLanguage,
+      provider: projects.upstreamProvider,
       updated: projects.updatedAt,
+      created: projects.createdAt,
+      lastBuild: projects.lastBuildAt,
+      lastSynced: projects.lastSyncedAt,
+      starsSynced: projects.starsSyncedAt,
+      readmeSynced: projects.readmeSyncedAt,
+      votesSynced: projects.votesSyncedAt,
+      discourseSynced: projects.discourseSyncedAt,
     };
     const orderCol = orderMap[query.sort || "popularity"] ?? projects.popularityScore;
     const orderDir = query.order === "asc" ? asc(orderCol) : desc(orderCol);
@@ -55,6 +99,7 @@ export function createProjectsRouter(db: Db) {
       db
         .select({
           id: projects.id,
+          coprId: projects.coprId,
           fullName: projects.fullName,
           owner: projects.owner,
           name: projects.name,
@@ -66,6 +111,12 @@ export function createProjectsRouter(db: Db) {
           popularityScore: projects.popularityScore,
           coprVotes: projects.coprVotes,
           coprDownloads: projects.coprDownloads,
+          coprRepoEnables: projects.coprRepoEnables,
+          discourseLikes: projects.discourseLikes,
+          discourseViews: projects.discourseViews,
+          discourseReplies: projects.discourseReplies,
+          lastBuildAt: projects.lastBuildAt,
+          updatedAt: projects.updatedAt,
         })
         .from(projects)
         .where(where)
@@ -86,6 +137,12 @@ export function createProjectsRouter(db: Db) {
       popularityScore: row.popularityScore ?? 0,
       coprVotes: row.coprVotes ?? 0,
       coprDownloads: row.coprDownloads ?? 0,
+      coprRepoEnables: row.coprRepoEnables ?? 0,
+      discourseLikes: row.discourseLikes ?? 0,
+      discourseViews: row.discourseViews ?? 0,
+      discourseReplies: row.discourseReplies ?? 0,
+      lastBuildAt: row.lastBuildAt?.toISOString() ?? null,
+      updatedAt: row.updatedAt?.toISOString() ?? null,
     }));
 
     return c.json({
@@ -114,6 +171,7 @@ export function createProjectsRouter(db: Db) {
     const project = result[0];
     return c.json({
       id: project.id,
+      coprId: project.coprId,
       fullName: project.fullName,
       owner: project.owner,
       name: project.name,
@@ -129,17 +187,23 @@ export function createProjectsRouter(db: Db) {
       upstreamDescription: project.upstreamDescription,
       upstreamLanguage: project.upstreamLanguage,
       upstreamTopics: project.upstreamTopics,
+      upstreamReadme: project.upstreamReadme ?? null,
       coprVotes: project.coprVotes ?? 0,
       coprDownloads: project.coprDownloads ?? 0,
       coprRepoEnables: project.coprRepoEnables ?? 0,
       discourseLikes: project.discourseLikes ?? 0,
       discourseViews: project.discourseViews ?? 0,
       discourseReplies: project.discourseReplies ?? 0,
-      upstreamReadme: project.upstreamReadme ?? null,
+      discourseTopicId: project.discourseTopicId,
       popularityScore: project.popularityScore ?? 0,
-      lastSyncedAt: project.lastSyncedAt?.toISOString() ?? null,
       lastBuildAt: project.lastBuildAt?.toISOString() ?? null,
+      lastSyncedAt: project.lastSyncedAt?.toISOString() ?? null,
       createdAt: project.createdAt?.toISOString() ?? null,
+      readmeSyncedAt: project.readmeSyncedAt?.toISOString() ?? null,
+      votesSyncedAt: project.votesSyncedAt?.toISOString() ?? null,
+      starsSyncedAt: project.starsSyncedAt?.toISOString() ?? null,
+      discourseSyncedAt: project.discourseSyncedAt?.toISOString() ?? null,
+      updatedAt: project.updatedAt?.toISOString() ?? null,
     } satisfies ProjectDetail);
   });
 
