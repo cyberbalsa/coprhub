@@ -326,14 +326,10 @@ export async function syncFromDump(db: Db, options: SyncOptions): Promise<void> 
     console.log("Popularity scores recomputed.");
 
   } finally {
-    // Clean up
-    try {
-      psql(`${baseUrl}/postgres`, `DROP DATABASE IF EXISTS ${TEMP_DB};`);
-    } catch {
-      // Ignore cleanup errors
-    }
+    // Clean up dump file only — keep temp DB for inspection,
+    // it gets dropped at the start of the next sync run
     await unlink(dumpPath).catch(() => {});
-    console.log("Cleanup complete.");
+    console.log("Cleanup complete (temp DB preserved until next sync).");
   }
 
   const durationMs = Date.now() - startTime;
