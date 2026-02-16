@@ -1,3 +1,6 @@
+import { eq } from "drizzle-orm";
+import { projects } from "@coprhub/shared";
+import type { Db } from "@coprhub/shared";
 import { USER_AGENT } from "./user-agent.js";
 
 const DISCOURSE_BASE = "https://discussion.fedoraproject.org";
@@ -61,4 +64,52 @@ export async function fetchDiscourseTopicStats(
     views: data.views,
     replies: data.reply_count,
   };
+}
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+export async function syncAllDiscourseStats(db: Db): Promise<void> {
+  console.log("Syncing Discourse stats...");
+
+  const allProjects = await db
+    .select({
+      id: projects.id,
+      owner: projects.owner,
+      name: projects.name,
+      discourseTopicId: projects.discourseTopicId,
+    })
+    .from(projects);
+
+  let discovered = 0;
+  let updated = 0;
+
+  for (const project of allProjects) {
+    if (project.discourseTopicId) {
+      const stats = await fetchDiscourseTopicStats(project.discourseTopicId);
+      if (stats) {
+        await db.update(projects).set({
+          discourseLikes: stats.likes,
+          discourseViews: stats.views,
+          discourseReplies: stats.replies,
+        }).where(eq(projects.id, project.id));
+        updated++;
+      }
+    } else {
+      const topic = await fetchDiscourseTopicByEmbedUrl(project.owner, project.name);
+      if (topic) {
+        await db.update(projects).set({
+          discourseTopicId: topic.topicId,
+          discourseLikes: topic.likes,
+          discourseViews: topic.views,
+          discourseReplies: topic.replies,
+        }).where(eq(projects.id, project.id));
+        discovered++;
+      }
+    }
+    await sleep(200);
+  }
+
+  console.log(`Discourse sync: ${discovered} discovered, ${updated} updated`);
 }

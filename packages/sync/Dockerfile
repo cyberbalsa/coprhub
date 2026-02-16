@@ -12,6 +12,7 @@ COPY packages/shared/ packages/shared/
 COPY packages/sync/ packages/sync/
 
 FROM base AS runtime
+RUN apt-get update && apt-get install -y --no-install-recommends postgresql-client gzip && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY --from=build /app ./
 CMD ["bun", "run", "packages/sync/src/index.ts"]
