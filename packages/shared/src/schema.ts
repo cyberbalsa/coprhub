@@ -68,6 +68,14 @@ export const packages = pgTable("packages", {
   sourceUrl: text("source_url"),
 });
 
+export const discourseCache = pgTable("discourse_cache", {
+  projectId: integer("project_id")
+    .references(() => projects.id, { onDelete: "cascade" })
+    .primaryKey(),
+  data: jsonb("data").notNull(),
+  fetchedAt: timestamp("fetched_at").defaultNow().notNull(),
+});
+
 export const categories = pgTable("categories", {
   id: serial("id").primaryKey(),
   slug: text("slug").unique().notNull(),

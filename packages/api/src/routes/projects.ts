@@ -5,6 +5,7 @@ import {
   packages as packagesTable,
   categories,
   projectCategories,
+  discourseCache,
 } from "@coprhub/shared";
 import type { Db } from "@coprhub/shared";
 import type { ProjectsQuery, PaginatedResponse, ProjectSummary, ProjectDetail, PackageInfo } from "@coprhub/shared";
@@ -166,20 +167,17 @@ export function createProjectsRouter(db: Db) {
     return c.json({ data: pkgs satisfies PackageInfo[] });
   });
 
-  // Comments proxy - fetches from Discourse API and caches
-  const commentsCache = new Map<string, { data: unknown; expiry: number }>();
-  const CACHE_TTL = 15 * 60 * 1000; // 15 minutes
+  // Comments proxy - fetches from Discourse API, cached in PostgreSQL for 12 hours
+  const CACHE_TTL_HOURS = 12;
 
   router.get("/:owner/:name/comments", async (c) => {
     const { owner, name } = c.req.param();
-    const cacheKey = `${owner}/${name}`;
-    const cached = commentsCache.get(cacheKey);
-    if (cached && cached.expiry > Date.now()) {
-      return c.json(cached.data);
-    }
 
     const project = await db
-      .select({ discourseTopicId: projects.discourseTopicId })
+      .select({
+        id: projects.id,
+        discourseTopicId: projects.discourseTopicId,
+      })
       .from(projects)
       .where(and(eq(projects.owner, owner), eq(projects.name, name)))
       .limit(1);
@@ -188,10 +186,31 @@ export function createProjectsRouter(db: Db) {
       return c.json({ error: "Project not found" }, 404);
     }
 
-    const topicId = project[0].discourseTopicId;
+    const { id: projectId, discourseTopicId: topicId } = project[0];
+
+    // Check DB cache
+    const cached = await db
+      .select()
+      .from(discourseCache)
+      .where(eq(discourseCache.projectId, projectId))
+      .limit(1);
+
+    if (cached.length > 0) {
+      const age = Date.now() - cached[0].fetchedAt.getTime();
+      if (age < CACHE_TTL_HOURS * 60 * 60 * 1000) {
+        return c.json(cached[0].data);
+      }
+    }
+
     if (!topicId) {
       const result = { data: [], topicUrl: null };
-      commentsCache.set(cacheKey, { data: result, expiry: Date.now() + CACHE_TTL });
+      await db
+        .insert(discourseCache)
+        .values({ projectId, data: result, fetchedAt: new Date() })
+        .onConflictDoUpdate({
+          target: discourseCache.projectId,
+          set: { data: result, fetchedAt: new Date() },
+        });
       return c.json(result);
     }
 
@@ -201,8 +220,9 @@ export function createProjectsRouter(db: Db) {
         { headers: { "User-Agent": "COPRHub/1.0 (https://coprhub.org)" } }
       );
       if (!res.ok) {
+        // On fetch failure, return stale cache if available
+        if (cached.length > 0) return c.json(cached[0].data);
         const result = { data: [], topicUrl: `https://discussion.fedoraproject.org/t/${topicId}` };
-        commentsCache.set(cacheKey, { data: result, expiry: Date.now() + CACHE_TTL });
         return c.json(result);
       }
 
@@ -226,9 +246,17 @@ export function createProjectsRouter(db: Db) {
         title: topic.title,
       };
 
-      commentsCache.set(cacheKey, { data: result, expiry: Date.now() + CACHE_TTL });
+      await db
+        .insert(discourseCache)
+        .values({ projectId, data: result, fetchedAt: new Date() })
+        .onConflictDoUpdate({
+          target: discourseCache.projectId,
+          set: { data: result, fetchedAt: new Date() },
+        });
+
       return c.json(result);
     } catch {
+      if (cached.length > 0) return c.json(cached[0].data);
       return c.json({ data: [], topicUrl: `https://discussion.fedoraproject.org/t/${topicId}` });
     }
   });
