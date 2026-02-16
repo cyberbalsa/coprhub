@@ -4,6 +4,7 @@ import { DiscourseComments } from "@/components/DiscourseComments";
 import { ReadmeDisplay } from "@/components/ReadmeDisplay";
 import { CopyButton } from "@/components/CopyButton";
 import { notFound } from "next/navigation";
+import { formatShortNumber, buildPopularityTooltip } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -44,11 +45,10 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
   return (
     <div className="project-detail">
       <div className="project-header">
-        <h1>{project.name}</h1>
-        <span className="owner">by {project.owner}</span>
+        <h1>{project.owner}/{project.name}</h1>
         {project.upstreamStars > 0 && (
           <span className="stars-badge">
-            &#9733; {project.upstreamStars.toLocaleString()}
+            &#9733; {formatShortNumber(project.upstreamStars)}
           </span>
         )}
         {project.coprVotes > 0 && (
@@ -59,12 +59,15 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
             className="votes-badge"
             title="Vote on COPR"
           >
-            &#128077; {project.coprVotes}
+            &#128077; {formatShortNumber(project.coprVotes)}
           </a>
         )}
         {project.popularityScore > 0 && (
-          <span className="popularity-badge" title="Popularity score">
-            &#x1f525; {project.popularityScore.toLocaleString()}
+          <span
+            className="popularity-badge tooltip"
+            data-tooltip={buildPopularityTooltip(project)}
+          >
+            &#x1f525; {formatShortNumber(project.popularityScore)}
           </span>
         )}
       </div>
