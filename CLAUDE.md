@@ -14,7 +14,8 @@ COPRHub (coprhub.org) is a Flathub-style web store for Fedora COPR repositories.
 - **Search:** PostgreSQL tsvector with weighted fields + GIN index
 - **Comments:** Giscus (GitHub Discussions)
 - **Testing:** Vitest
-- **Deployment:** Podman Compose (5 containers: postgres, api, frontend, sync-worker, cloudflared)
+- **Cache:** pogocache (Redis/RESP protocol) with gzip compression
+- **Deployment:** Podman Compose (6 containers: postgres, pogocache, api, frontend, sync-worker, cloudflared)
 
 ## Monorepo Structure
 
@@ -68,6 +69,7 @@ podman exec -i copr-index_postgres_1 \
 - **All frontend pages use `export const dynamic = "force-dynamic"`** - prevents static prerender at build time (API not available during Docker build)
 - **Podman requires fully qualified image names** - always use `docker.io/` prefix
 - **Bun workspaces** - all workspace `package.json` files must be copied in every Dockerfile for `--frozen-lockfile` to work
+- **Three-tier caching** - Cloudflare edge (Cache-Control headers) → pogocache (in-memory, 4h TTL) → PostgreSQL (source of truth)
 
 ## Database
 
@@ -115,6 +117,26 @@ All text filters support ILIKE wildcards (`*` → `%`). Without `*`, exact match
 
 **Pagination:** `page` (default 1), `limit` (default 24, max 100), `order` (`asc`/`desc`, default `desc`)
 
+## Response Cache
+
+A Hono middleware (`packages/api/src/cache.ts`) caches all GET API responses in pogocache via the Redis/RESP protocol with gzip compression.
+
+- **TTL:** 4 hours (14400 seconds) — no active invalidation, TTL-only expiry
+- **Cache key:** `api:GET:{path}?{sorted-query-params}` — query params sorted alphabetically for normalization
+- **Compression:** Bun built-in `gzipSync`/`gunzipSync` (native `@napi-rs/zstd` doesn't work in Bun Docker containers)
+- **Headers:** `Cache-Control: public, max-age=14400, s-maxage=14400, stale-while-revalidate=3600` + `X-Cache: HIT|MISS`
+- **Excluded:** `/api/health` and `/api/openapi.json` get `Cache-Control: no-store`
+- **Non-2xx responses are never cached** — only successful responses are stored
+- **Graceful degradation:** if pogocache is down, requests fall through to PostgreSQL transparently
+- **Conditional activation:** middleware only mounts when `CACHE_URL` env var is set (tests run without cache)
+
+### pogocache Gotchas
+
+- Image is `docker.io/pogocache/pogocache` (not `tidwall/pogocache`)
+- All protocols (RESP, HTTP, Memcache, Postgres) share **port 9401** (not 6379)
+- Default bind is `127.0.0.1` — use `-h 0.0.0.0` in Docker for container networking
+- Does not support Redis `INFO` command — set `enableReadyCheck: false` in ioredis
+
 ## Sync Worker
 
 Runs three sync jobs on configurable intervals:
@@ -147,4 +169,5 @@ See `.env.example`. Key vars:
 - `STARS_SYNC_TTL_HOURS` - Hours before per-project star sync repeats (default: matches interval)
 - `DISCOURSE_SYNC_TTL_HOURS` - Hours before per-project discourse sync repeats (default: matches interval)
 - `FORCE_SYNC` - Set to `true` to bypass all TTL checks
+- `CACHE_URL` - Redis URL for pogocache (e.g., `redis://localhost:9401`; omit to disable caching)
 - `CLOUDFLARED_TUNNEL_TOKEN` - Cloudflare tunnel token for production
