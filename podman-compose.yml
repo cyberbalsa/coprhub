@@ -40,9 +40,6 @@ services:
       - api
     environment:
       API_URL: http://api:4000
-      NEXT_PUBLIC_GISCUS_REPO: ${GISCUS_REPO}
-      NEXT_PUBLIC_GISCUS_REPO_ID: ${GISCUS_REPO_ID}
-      NEXT_PUBLIC_GISCUS_CATEGORY_ID: ${GISCUS_CATEGORY_ID}
     ports:
       - "3000:3000"
 
@@ -59,6 +56,7 @@ services:
       GITHUB_TOKEN: ${GITHUB_TOKEN}
       COPR_SYNC_INTERVAL_HOURS: "6"
       STARS_SYNC_INTERVAL_HOURS: "12"
+      VOTES_SYNC_INTERVAL_HOURS: ${VOTES_SYNC_INTERVAL_HOURS:-24}
 
   cloudflared:
     image: docker.io/cloudflare/cloudflared:latest
