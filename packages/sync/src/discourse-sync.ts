@@ -121,6 +121,11 @@ export async function syncAllDiscourseStats(db: Db, options: SyncOptions): Promi
           discourseSyncedAt: new Date(),
         }).where(eq(projects.id, project.id));
         updated++;
+      } else {
+        // API failure or deleted topic — mark as synced to avoid retry storm
+        await db.update(projects).set({
+          discourseSyncedAt: new Date(),
+        }).where(eq(projects.id, project.id));
       }
     } else {
       const topic = await fetchDiscourseTopicByEmbedUrl(project.owner, project.name);

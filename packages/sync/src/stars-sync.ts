@@ -176,6 +176,12 @@ export async function syncAllStars(db: Db, options: SyncOptions): Promise<number
         })
         .where(eq(projects.id, project.id));
       synced++;
+    } else {
+      // API failure (404, rate limit, etc.) — mark as synced to avoid retry storm
+      await db
+        .update(projects)
+        .set({ starsSyncedAt: new Date() })
+        .where(eq(projects.id, project.id));
     }
 
     await sleep(100);
