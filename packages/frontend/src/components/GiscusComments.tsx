@@ -13,14 +13,14 @@ export function GiscusComments() {
     <Giscus
       repo={repo as `${string}/${string}`}
       repoId={repoId}
-      category="Announcements"
+      category="COPR Comments"
       categoryId={categoryId}
-      mapping="pathname"
-      strict="0"
+      mapping="og:title"
+      strict="1"
       reactionsEnabled="1"
-      emitMetadata="0"
-      inputPosition="bottom"
-      theme="dark"
+      emitMetadata="1"
+      inputPosition="top"
+      theme="dark_high_contrast"
       lang="en"
       loading="lazy"
     />

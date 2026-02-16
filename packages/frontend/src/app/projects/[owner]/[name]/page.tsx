@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { getProject, getProjectPackages } from "@/lib/api-client";
 import { GiscusComments } from "@/components/GiscusComments";
 import { CopyButton } from "@/components/CopyButton";
@@ -7,6 +8,20 @@ export const dynamic = "force-dynamic";
 
 interface ProjectPageProps {
   params: Promise<{ owner: string; name: string }>;
+}
+
+export async function generateMetadata({ params }: ProjectPageProps): Promise<Metadata> {
+  const { owner, name } = await params;
+  try {
+    const project = await getProject(owner, name);
+    const ogTitle = `[${project.id}] - ${project.owner}/${project.name}`;
+    return {
+      title: `${project.owner}/${project.name} - COPRHub`,
+      openGraph: { title: ogTitle },
+    };
+  } catch {
+    return { title: "Project not found - COPRHub" };
+  }
 }
 
 export default async function ProjectPage({ params }: ProjectPageProps) {
