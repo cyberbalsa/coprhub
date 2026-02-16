@@ -8,6 +8,9 @@ export interface ProjectSummary {
   upstreamProvider: "github" | "gitlab" | null;
   upstreamStars: number;
   upstreamLanguage: string | null;
+  popularityScore: number;
+  coprVotes: number;
+  coprDownloads: number;
 }
 
 export interface ProjectDetail extends ProjectSummary {
@@ -18,6 +21,11 @@ export interface ProjectDetail extends ProjectSummary {
   upstreamForks: number;
   upstreamDescription: string | null;
   upstreamTopics: string[] | null;
+  coprRepoEnables: number;
+  discourseLikes: number;
+  discourseViews: number;
+  discourseReplies: number;
+  upstreamReadme: string | null;
   lastSyncedAt: string | null;
   createdAt: string | null;
 }
@@ -53,7 +61,7 @@ export interface StatsResponse {
 
 export interface ProjectsQuery {
   q?: string;
-  sort?: "stars" | "name" | "updated";
+  sort?: "popularity" | "stars" | "votes" | "downloads" | "likes" | "views" | "replies" | "name" | "updated";
   order?: "asc" | "desc";
   category?: string;
   owner?: string;
