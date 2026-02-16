@@ -31,6 +31,7 @@ export function createCategoriesRouter(db: Db) {
     const data = await db
       .select({
         id: projects.id,
+        coprId: projects.coprId,
         fullName: projects.fullName,
         owner: projects.owner,
         name: projects.name,
@@ -39,6 +40,15 @@ export function createCategoriesRouter(db: Db) {
         upstreamProvider: projects.upstreamProvider,
         upstreamStars: projects.upstreamStars,
         upstreamLanguage: projects.upstreamLanguage,
+        popularityScore: projects.popularityScore,
+        coprVotes: projects.coprVotes,
+        coprDownloads: projects.coprDownloads,
+        coprRepoEnables: projects.coprRepoEnables,
+        discourseLikes: projects.discourseLikes,
+        discourseViews: projects.discourseViews,
+        discourseReplies: projects.discourseReplies,
+        lastBuildAt: projects.lastBuildAt,
+        updatedAt: projects.updatedAt,
       })
       .from(projects)
       .innerJoin(projectCategories, eq(projects.id, projectCategories.projectId))
