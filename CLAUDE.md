@@ -93,9 +93,12 @@ All routes prefixed with `/api`:
 
 ## Sync Worker
 
-Runs two cron jobs:
-1. **COPR sync** (every 6h) - fetches all projects and packages from COPR API v3
+Runs three sync jobs on configurable intervals:
+1. **Dump sync** (every 24h) - imports COPR database dump with all projects, packages, votes, downloads
 2. **Star sync** (every 12h) - fetches GitHub/GitLab stars for projects with detected upstream URLs
+3. **Discourse sync** (every 24h) - fetches Discourse topic stats (likes, views, replies)
+
+All sync workers have per-project or job-level TTL checks — on restart, they skip recently-synced work instead of re-fetching everything.
 
 User-Agent for all external API calls: `COPRHub/1.0 (https://coprhub.org; github.com/cyberbalsa/coprhub)`
 
@@ -116,4 +119,8 @@ See `.env.example`. Key vars:
 - `DATABASE_URL` - PostgreSQL connection string
 - `GITHUB_TOKEN` - GitHub API token (optional, increases rate limit for star sync)
 - `GISCUS_REPO`, `GISCUS_REPO_ID`, `GISCUS_CATEGORY_ID` - Giscus config
+- `DUMP_SYNC_TTL_HOURS` - Hours before dump sync can re-run (default: matches interval)
+- `STARS_SYNC_TTL_HOURS` - Hours before per-project star sync repeats (default: matches interval)
+- `DISCOURSE_SYNC_TTL_HOURS` - Hours before per-project discourse sync repeats (default: matches interval)
+- `FORCE_SYNC` - Set to `true` to bypass all TTL checks
 - `CLOUDFLARED_TUNNEL_TOKEN` - Cloudflare tunnel token for production
