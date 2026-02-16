@@ -79,8 +79,16 @@ export function createProjectsRouter(db: Db) {
 
     const total = countResult[0]?.count || 0;
 
+    const mapped: ProjectSummary[] = data.map((row) => ({
+      ...row,
+      upstreamStars: row.upstreamStars ?? 0,
+      popularityScore: row.popularityScore ?? 0,
+      coprVotes: row.coprVotes ?? 0,
+      coprDownloads: row.coprDownloads ?? 0,
+    }));
+
     return c.json({
-      data,
+      data: mapped,
       meta: {
         page: query.page || 1,
         limit: query.limit || 24,
