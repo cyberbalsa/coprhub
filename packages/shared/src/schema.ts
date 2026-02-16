@@ -40,6 +40,7 @@ export const projects = pgTable(
     discourseViews: integer("discourse_views").default(0),
     discourseReplies: integer("discourse_replies").default(0),
     popularityScore: integer("popularity_score").default(0),
+    lastBuildAt: timestamp("last_build_at"),
     readmeSyncedAt: timestamp("readme_synced_at"),
     votesSyncedAt: timestamp("votes_synced_at"),
     searchVector: text("search_vector"),
