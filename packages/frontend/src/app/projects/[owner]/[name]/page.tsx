@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { getProject, getProjectPackages } from "@/lib/api-client";
-import { GiscusComments } from "@/components/GiscusComments";
+import { DiscourseComments } from "@/components/DiscourseComments";
+import { ReadmeDisplay } from "@/components/ReadmeDisplay";
 import { CopyButton } from "@/components/CopyButton";
 import { notFound } from "next/navigation";
 
@@ -45,6 +46,22 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
         {project.upstreamStars > 0 && (
           <span className="stars-badge">
             &#9733; {project.upstreamStars.toLocaleString()}
+          </span>
+        )}
+        {project.coprVotes > 0 && (
+          <a
+            href={`https://copr.fedorainfracloud.org/coprs/${owner}/${name}/`}
+            target="_blank"
+            rel="noopener"
+            className="votes-badge"
+            title="Vote on COPR"
+          >
+            &#128077; {project.coprVotes}
+          </a>
+        )}
+        {project.popularityScore > 0 && (
+          <span className="popularity-badge" title="Popularity score">
+            &#x1f525; {project.popularityScore.toLocaleString()}
           </span>
         )}
       </div>
@@ -116,9 +133,16 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
         </section>
       )}
 
+      {project.upstreamReadme && (
+        <section>
+          <h2>README</h2>
+          <ReadmeDisplay content={project.upstreamReadme} />
+        </section>
+      )}
+
       <section className="comments-section">
         <h2>Community</h2>
-        <GiscusComments />
+        <DiscourseComments owner={owner} name={name} />
       </section>
     </div>
   );
