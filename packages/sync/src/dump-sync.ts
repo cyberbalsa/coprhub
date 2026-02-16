@@ -104,9 +104,9 @@ const AGG_SQL = `
   CREATE INDEX agg_chroots_idx ON agg_chroots(copr_id);
 
   CREATE TABLE agg_last_build AS
-  SELECT copr_id, to_timestamp(MAX(ended_on)) as last_build
+  SELECT copr_id, to_timestamp(MAX(submitted_on)) as last_build
   FROM build
-  WHERE ended_on IS NOT NULL
+  WHERE submitted_on IS NOT NULL
   GROUP BY copr_id;
   CREATE INDEX agg_last_build_idx ON agg_last_build(copr_id);
 `;
