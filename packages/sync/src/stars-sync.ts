@@ -1,7 +1,7 @@
 import { eq, isNotNull } from "drizzle-orm";
-import { projects } from "@copr-index/shared";
-import { parseUpstreamUrl } from "@copr-index/shared";
-import type { Db } from "@copr-index/shared";
+import { projects } from "@coprhub/shared";
+import { parseUpstreamUrl } from "@coprhub/shared";
+import type { Db } from "@coprhub/shared";
 import { USER_AGENT } from "./user-agent.js";
 
 export interface UpstreamMeta {

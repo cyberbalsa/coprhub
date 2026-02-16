@@ -1,4 +1,4 @@
-import type { ProjectSummary } from "@copr-index/shared";
+import type { ProjectSummary } from "@coprhub/shared";
 
 export function ProjectCard({ project }: { project: ProjectSummary }) {
   return (

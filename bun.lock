@@ -6,10 +6,10 @@
       "name": "copr-index",
     },
     "packages/api": {
-      "name": "@copr-index/api",
+      "name": "@coprhub/api",
       "version": "0.0.1",
       "dependencies": {
-        "@copr-index/shared": "workspace:*",
+        "@coprhub/shared": "workspace:*",
         "@hono/node-server": "^1.14.0",
         "@hono/swagger-ui": "^0.5.3",
         "drizzle-orm": "^0.39.0",
@@ -23,10 +23,10 @@
       },
     },
     "packages/frontend": {
-      "name": "@copr-index/frontend",
+      "name": "@coprhub/frontend",
       "version": "0.0.1",
       "dependencies": {
-        "@copr-index/shared": "workspace:*",
+        "@coprhub/shared": "workspace:*",
         "@giscus/react": "^3.1.0",
         "next": "^15.2.0",
         "react": "^19.0.0",
@@ -42,7 +42,7 @@
       },
     },
     "packages/shared": {
-      "name": "@copr-index/shared",
+      "name": "@coprhub/shared",
       "version": "0.0.1",
       "dependencies": {
         "drizzle-orm": "^0.39.0",
@@ -55,10 +55,10 @@
       },
     },
     "packages/sync": {
-      "name": "@copr-index/sync",
+      "name": "@coprhub/sync",
       "version": "0.0.1",
       "dependencies": {
-        "@copr-index/shared": "workspace:*",
+        "@coprhub/shared": "workspace:*",
         "drizzle-orm": "^0.39.0",
         "postgres": "^3.4.0",
       },
@@ -76,13 +76,13 @@
 
     "@babel/runtime": ["@babel/runtime@7.28.6", "", {}, "sha512-05WQkdpL9COIMz4LjTxGpPNCdlpyimKppYNoJ5Di5EUObifl8t4tuLuUBBZEpoLYOmfvIWrsp9fCl0HoPRVTdA=="],
 
-    "@copr-index/api": ["@copr-index/api@workspace:packages/api"],
+    "@coprhub/api": ["@coprhub/api@workspace:packages/api"],
 
-    "@copr-index/frontend": ["@copr-index/frontend@workspace:packages/frontend"],
+    "@coprhub/frontend": ["@coprhub/frontend@workspace:packages/frontend"],
 
-    "@copr-index/shared": ["@copr-index/shared@workspace:packages/shared"],
+    "@coprhub/shared": ["@coprhub/shared@workspace:packages/shared"],
 
-    "@copr-index/sync": ["@copr-index/sync@workspace:packages/sync"],
+    "@coprhub/sync": ["@coprhub/sync@workspace:packages/sync"],
 
     "@drizzle-team/brocli": ["@drizzle-team/brocli@0.10.2", "", {}, "sha512-z33Il7l5dKjUgGULTqBsQBQwckHh5AbIuxhdsIxDDiZAzBOrZO6q9ogcWC65kU382AfynTfgNumVcNIjuIua6w=="],
 

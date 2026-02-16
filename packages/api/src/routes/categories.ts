@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { eq, sql, desc } from "drizzle-orm";
-import { categories, projectCategories, projects } from "@copr-index/shared";
-import type { Db } from "@copr-index/shared";
+import { categories, projectCategories, projects } from "@coprhub/shared";
+import type { Db } from "@coprhub/shared";
 
 export function createCategoriesRouter(db: Db) {
   const router = new Hono();

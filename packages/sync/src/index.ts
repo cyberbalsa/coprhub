@@ -1,4 +1,4 @@
-import { createDb } from "@copr-index/shared";
+import { createDb } from "@coprhub/shared";
 import { syncCoprProjects } from "./copr-sync.js";
 import { syncAllStars } from "./stars-sync.js";
 

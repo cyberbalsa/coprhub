@@ -1,4 +1,4 @@
-import { createDb } from "@copr-index/shared";
+import { createDb } from "@coprhub/shared";
 
 const DATABASE_URL = process.env.DATABASE_URL;
 if (!DATABASE_URL && process.env.NODE_ENV !== "test") {

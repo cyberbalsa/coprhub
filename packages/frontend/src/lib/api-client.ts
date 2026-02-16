@@ -6,7 +6,7 @@ import type {
   CategoryInfo,
   StatsResponse,
   ProjectsQuery,
-} from "@copr-index/shared";
+} from "@coprhub/shared";
 
 const API_URL = process.env.API_URL || "http://localhost:4000";
 

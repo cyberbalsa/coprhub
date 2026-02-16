@@ -1,13 +1,13 @@
 {
-  "name": "copr-index",
+  "name": "coprhub",
   "private": true,
   "workspaces": ["packages/*"],
   "scripts": {
-    "dev:api": "bun --filter @copr-index/api dev",
-    "dev:frontend": "bun --filter @copr-index/frontend dev",
+    "dev:api": "bun --filter @coprhub/api dev",
+    "dev:frontend": "bun --filter @coprhub/frontend dev",
     "build": "bun --filter '*' build",
     "test": "bun --filter '*' test",
-    "db:generate": "bun --filter @copr-index/shared db:generate",
-    "db:migrate": "bun --filter @copr-index/shared db:migrate"
+    "db:generate": "bun --filter @coprhub/shared db:generate",
+    "db:migrate": "bun --filter @coprhub/shared db:migrate"
   }
 }

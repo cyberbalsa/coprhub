@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
-import { projects, packages as packagesTable } from "@copr-index/shared";
-import { extractUpstreamFromTexts } from "@copr-index/shared";
-import type { Db } from "@copr-index/shared";
+import { projects, packages as packagesTable } from "@coprhub/shared";
+import { extractUpstreamFromTexts } from "@coprhub/shared";
+import type { Db } from "@coprhub/shared";
 import { USER_AGENT } from "./user-agent.js";
 
 const COPR_API_BASE = "https://copr.fedorainfracloud.org/api_3";

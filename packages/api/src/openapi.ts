@@ -1,10 +1,10 @@
 export const openApiSpec = {
   openapi: "3.1.0",
   info: {
-    title: "COPR Index API",
+    title: "COPRHub API",
     version: "0.1.0",
     description:
-      "REST API for the COPR Index — a Flathub-style web store for Fedora COPR repositories. Browse, search, and discover community-built RPM packages with upstream GitHub/GitLab star counts.",
+      "REST API for COPRHub — a Flathub-style web store for Fedora COPR repositories. Browse, search, and discover community-built RPM packages with upstream GitHub/GitLab star counts.",
     license: {
       name: "MIT",
     },

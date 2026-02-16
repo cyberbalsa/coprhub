@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "COPR Index",
+  title: "COPRHub",
   description: "Discover Fedora COPR packages",
 };
 
@@ -16,7 +16,7 @@ export default function RootLayout({
       <body>
         <header>
           <nav>
-            <a href="/">COPR Index</a>
+            <a href="/">COPRHub</a>
             <a href="/search">Browse</a>
           </nav>
         </header>

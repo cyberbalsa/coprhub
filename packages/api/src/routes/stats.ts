@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { sql, isNotNull } from "drizzle-orm";
-import { projects } from "@copr-index/shared";
-import type { Db } from "@copr-index/shared";
+import { projects } from "@coprhub/shared";
+import type { Db } from "@coprhub/shared";
 
 export function createStatsRouter(db: Db) {
   const router = new Hono();

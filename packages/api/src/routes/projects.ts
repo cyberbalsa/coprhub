@@ -5,9 +5,9 @@ import {
   packages as packagesTable,
   categories,
   projectCategories,
-} from "@copr-index/shared";
-import type { Db } from "@copr-index/shared";
-import type { ProjectsQuery, PaginatedResponse, ProjectSummary, ProjectDetail, PackageInfo } from "@copr-index/shared";
+} from "@coprhub/shared";
+import type { Db } from "@coprhub/shared";
+import type { ProjectsQuery, PaginatedResponse, ProjectSummary, ProjectDetail, PackageInfo } from "@coprhub/shared";
 
 export function createProjectsRouter(db: Db) {
   const router = new Hono();

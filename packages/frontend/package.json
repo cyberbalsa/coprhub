@@ -1,5 +1,5 @@
 {
-  "name": "@copr-index/frontend",
+  "name": "@coprhub/frontend",
   "version": "0.0.1",
   "private": true,
   "scripts": {
@@ -9,7 +9,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@copr-index/shared": "workspace:*",
+    "@coprhub/shared": "workspace:*",
     "@giscus/react": "^3.1.0",
     "next": "^15.2.0",
     "react": "^19.0.0",

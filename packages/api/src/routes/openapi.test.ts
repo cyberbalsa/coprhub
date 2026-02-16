@@ -7,7 +7,7 @@ describe("OpenAPI", () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.openapi).toBe("3.1.0");
-    expect(body.info.title).toBe("COPR Index API");
+    expect(body.info.title).toBe("COPRHub API");
     expect(body.paths["/api/projects"]).toBeDefined();
     expect(body.paths["/api/health"]).toBeDefined();
     expect(body.components.schemas.ProjectSummary).toBeDefined();

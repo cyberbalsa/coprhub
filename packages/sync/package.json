@@ -1,5 +1,5 @@
 {
-  "name": "@copr-index/sync",
+  "name": "@coprhub/sync",
   "version": "0.0.1",
   "private": true,
   "type": "module",
@@ -10,7 +10,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@copr-index/shared": "workspace:*",
+    "@coprhub/shared": "workspace:*",
     "drizzle-orm": "^0.39.0",
     "postgres": "^3.4.0"
   },

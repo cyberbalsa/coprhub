@@ -1,2 +1,2 @@
 export const USER_AGENT =
-  "FedoraCOPRHub/1.0 <Repo: github.com/cyberbalsa/coprhub>";
+  "COPRHub/1.0 (https://coprhub.org; github.com/cyberbalsa/coprhub)";

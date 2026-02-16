@@ -1,8 +1,8 @@
-# CLAUDE.md - COPR Index
+# CLAUDE.md - COPRHub
 
 ## Project Overview
 
-COPR Index is a Flathub-style web store for Fedora COPR repositories. It indexes all COPR projects, auto-detects upstream GitHub/GitLab repos, fetches star counts, and provides full-text search with Giscus-powered comments.
+COPRHub (coprhub.org) is a Flathub-style web store for Fedora COPR repositories. It indexes all COPR projects, auto-detects upstream GitHub/GitLab repos, fetches star counts, and provides full-text search with Giscus-powered comments.
 
 ## Tech Stack
 
@@ -26,7 +26,7 @@ packages/
   sync/      - COPR + GitHub/GitLab sync worker (cron-based)
 ```
 
-All packages depend on `@copr-index/shared` for schema and types.
+All packages depend on `@coprhub/shared` for schema and types.
 
 ## Common Commands
 
@@ -51,9 +51,9 @@ podman-compose down            # Stop everything
 
 After first start, initialize the database:
 ```bash
-DATABASE_URL="postgresql://copr:devpassword@localhost:5432/copr_index" \
+DATABASE_URL="postgresql://copr:devpassword@localhost:5432/coprhub" \
   bunx drizzle-kit push --config packages/shared/drizzle.config.ts
-psql postgresql://copr:devpassword@localhost:5432/copr_index \
+psql postgresql://copr:devpassword@localhost:5432/coprhub \
   -f packages/shared/drizzle/0001_search_vector.sql
 ```
 
@@ -100,9 +100,9 @@ User-Agent for all external API calls: `FedoraCOPRHub/1.0 <Repo: github.com/cybe
 
 ```bash
 bun run test                   # All packages
-bun --filter @copr-index/api test       # API only
-bun --filter @copr-index/sync test      # Sync only
-bun --filter @copr-index/shared test    # Shared only
+bun --filter @coprhub/api test       # API only
+bun --filter @coprhub/sync test      # Sync only
+bun --filter @coprhub/shared test    # Shared only
 ```
 
 Tests use Vitest. API tests use Hono's `app.request()` for in-process testing without a running server.
