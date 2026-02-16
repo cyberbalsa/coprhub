@@ -526,7 +526,7 @@ export const openApiSpec = {
             items: { $ref: "#/components/schemas/CommentPost" },
           },
           topicUrl: { type: ["string", "null"], format: "uri" },
-          title: { type: "string" },
+          title: { type: ["string", "null"] },
         },
       },
     },
