@@ -12,11 +12,17 @@ const DUMP_SYNC_INTERVAL_HOURS = parseInt(process.env.DUMP_SYNC_INTERVAL_HOURS |
 const STARS_SYNC_INTERVAL_HOURS = parseInt(process.env.STARS_SYNC_INTERVAL_HOURS || "12", 10);
 const DISCOURSE_SYNC_INTERVAL_HOURS = parseInt(process.env.DISCOURSE_SYNC_INTERVAL_HOURS || "24", 10);
 
+const DUMP_SYNC_TTL_HOURS = parseInt(process.env.DUMP_SYNC_TTL_HOURS || String(DUMP_SYNC_INTERVAL_HOURS), 10);
+const STARS_SYNC_TTL_HOURS = parseInt(process.env.STARS_SYNC_TTL_HOURS || String(STARS_SYNC_INTERVAL_HOURS), 10);
+const DISCOURSE_SYNC_TTL_HOURS = parseInt(process.env.DISCOURSE_SYNC_TTL_HOURS || String(DISCOURSE_SYNC_INTERVAL_HOURS), 10);
+
+const FORCE_SYNC = process.env.FORCE_SYNC === "true";
+
 const db = createDb(DATABASE_URL);
 
 async function runDumpSync() {
   try {
-    await syncFromDump(db);
+    await syncFromDump(db, { ttlHours: DUMP_SYNC_TTL_HOURS, forceSync: FORCE_SYNC });
   } catch (err) {
     console.error("Dump sync failed:", err);
   }
@@ -24,7 +30,7 @@ async function runDumpSync() {
 
 async function runStarSync() {
   try {
-    await syncAllStars(db);
+    await syncAllStars(db, { ttlHours: STARS_SYNC_TTL_HOURS, forceSync: FORCE_SYNC });
   } catch (err) {
     console.error("Star sync failed:", err);
   }
@@ -32,7 +38,7 @@ async function runStarSync() {
 
 async function runDiscourseSync() {
   try {
-    await syncAllDiscourseStats(db);
+    await syncAllDiscourseStats(db, { ttlHours: DISCOURSE_SYNC_TTL_HOURS, forceSync: FORCE_SYNC });
   } catch (err) {
     console.error("Discourse sync failed:", err);
   }
@@ -42,6 +48,12 @@ console.log("Sync worker starting...");
 console.log(
   `Intervals — Dump: ${DUMP_SYNC_INTERVAL_HOURS}h, Stars: ${STARS_SYNC_INTERVAL_HOURS}h, Discourse: ${DISCOURSE_SYNC_INTERVAL_HOURS}h`
 );
+console.log(
+  `TTLs — Dump: ${DUMP_SYNC_TTL_HOURS}h, Stars: ${STARS_SYNC_TTL_HOURS}h, Discourse: ${DISCOURSE_SYNC_TTL_HOURS}h`
+);
+if (FORCE_SYNC) {
+  console.log("FORCE_SYNC enabled — all TTL checks bypassed");
+}
 
 await runDumpSync();
 await runStarSync();
