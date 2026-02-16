@@ -64,13 +64,23 @@ export async function recomputeAllPopularityScores(db: Db): Promise<void> {
     .update(projects)
     .set({
       popularityScore: sql`
-        (COALESCE(upstream_stars, 0) * 10) +
-        (COALESCE(copr_votes, 0) * 5) +
-        LEAST(COALESCE(copr_downloads, 0) * 0.01, 1000)::integer +
-        LEAST(COALESCE(copr_repo_enables, 0) * 0.1, 500)::integer +
-        (COALESCE(discourse_likes, 0) * 3) +
-        (COALESCE(discourse_replies, 0) * 1) +
-        (ln(greatest(COALESCE(discourse_views, 0), 1)) * 2)::integer
+        (
+          (COALESCE(upstream_stars, 0) * 10) +
+          (COALESCE(copr_votes, 0) * 5) +
+          LEAST(COALESCE(copr_downloads, 0) * 0.01, 1000)::integer +
+          LEAST(COALESCE(copr_repo_enables, 0) * 0.1, 500)::integer +
+          (COALESCE(discourse_likes, 0) * 3) +
+          (COALESCE(discourse_replies, 0) * 1) +
+          (ln(greatest(COALESCE(discourse_views, 0), 1)) * 2)::integer
+        ) * (
+          CASE
+            WHEN last_build_at IS NULL THEN 1.0
+            WHEN EXTRACT(EPOCH FROM (NOW() - last_build_at)) / 86400.0 <= 7 THEN 1.0
+            ELSE GREATEST(0.05,
+              EXP(-3.0 * (EXTRACT(EPOCH FROM (NOW() - last_build_at)) / 86400.0 - 7) / 83.0)
+            )
+          END
+        )
       `,
     });
 
