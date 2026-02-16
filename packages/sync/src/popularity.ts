@@ -39,16 +39,22 @@ export interface PopularityInput {
   discourseViews: number;
 }
 
-export function computePopularityScore(input: PopularityInput): number {
-  return Math.floor(
+export function computePopularityScore(
+  input: PopularityInput,
+  lastBuildAt?: Date | null,
+  now?: Date,
+): number {
+  const baseScore =
     input.stars * WEIGHTS.stars +
     input.votes * WEIGHTS.votes +
     Math.min(input.downloads * WEIGHTS.downloads, WEIGHTS.downloadsCap) +
     Math.min(input.repoEnables * WEIGHTS.repoEnables, WEIGHTS.repoEnablesCap) +
     input.discourseLikes * WEIGHTS.discourseLikes +
     input.discourseReplies * WEIGHTS.discourseReplies +
-    (input.discourseViews > 0 ? Math.log(input.discourseViews) * WEIGHTS.discourseViews : 0)
-  );
+    (input.discourseViews > 0 ? Math.log(input.discourseViews) * WEIGHTS.discourseViews : 0);
+
+  const multiplier = computeStalenessMultiplier(lastBuildAt ?? null, now);
+  return Math.floor(baseScore * multiplier);
 }
 
 export async function recomputeAllPopularityScores(db: Db): Promise<void> {

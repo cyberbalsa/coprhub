@@ -45,6 +45,38 @@ describe("computePopularityScore", () => {
     });
     expect(score1).toBe(score2);
   });
+
+  it("applies staleness penalty for old builds", () => {
+    const now = new Date("2026-02-15T00:00:00Z");
+    const thirtyDaysAgo = new Date("2026-01-16T00:00:00Z");
+    const input = {
+      stars: 100, votes: 10, downloads: 50000, repoEnables: 2000,
+      discourseLikes: 20, discourseReplies: 50, discourseViews: 5000,
+    };
+    const baseScore = computePopularityScore(input);
+    const stalePenalized = computePopularityScore(input, thirtyDaysAgo, now);
+    expect(stalePenalized).toBeLessThan(baseScore);
+    expect(stalePenalized).toBeGreaterThan(0);
+  });
+
+  it("applies no penalty when lastBuildAt is null", () => {
+    const input = {
+      stars: 100, votes: 0, downloads: 0, repoEnables: 0,
+      discourseLikes: 0, discourseReplies: 0, discourseViews: 0,
+    };
+    const withNull = computePopularityScore(input, null);
+    const withoutArg = computePopularityScore(input);
+    expect(withNull).toBe(withoutArg);
+  });
+
+  it("returns 0 when base score is 0 regardless of staleness", () => {
+    const old = new Date("2020-01-01T00:00:00Z");
+    const score = computePopularityScore({
+      stars: 0, votes: 0, downloads: 0, repoEnables: 0,
+      discourseLikes: 0, discourseReplies: 0, discourseViews: 0,
+    }, old);
+    expect(score).toBe(0);
+  });
 });
 
 describe("computeStalenessMultiplier", () => {
