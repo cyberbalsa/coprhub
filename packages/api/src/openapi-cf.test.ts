@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { convertToOas3_0 } from "./openapi-cf.js";
 import { openApiSpec } from "./openapi.js";
+import { app } from "./index.js";
 
 describe("convertToOas3_0", () => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- deep structural assertions on generic JSON
@@ -71,5 +72,16 @@ describe("convertToOas3_0", () => {
     const originalSchemas = Object.keys(openApiSpec.components.schemas);
     const convertedSchemas = Object.keys(converted.components.schemas);
     expect(convertedSchemas).toEqual(originalSchemas);
+  });
+});
+
+describe("GET /api/cf", () => {
+  it("returns a valid OAS 3.0.0 spec", async () => {
+    const res = await app.request("/api/cf");
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.openapi).toBe("3.0.0");
+    expect(body.info.title).toBe("COPRHub API");
+    expect(body.paths["/api/projects"]).toBeDefined();
   });
 });

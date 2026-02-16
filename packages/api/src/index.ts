@@ -7,6 +7,7 @@ import { createProjectsRouter } from "./routes/projects.js";
 import { createCategoriesRouter } from "./routes/categories.js";
 import { createStatsRouter } from "./routes/stats.js";
 import { openApiSpec } from "./openapi.js";
+import { convertToOas3_0 } from "./openapi-cf.js";
 import { db } from "./db.js";
 
 export const app = new Hono();
@@ -19,7 +20,7 @@ if (process.env.CACHE_URL) {
   app.use(
     "/api/*",
     createCacheMiddleware(process.env.CACHE_URL, {
-      excludePaths: ["/api/health", "/api/openapi.json"],
+      excludePaths: ["/api/health", "/api/openapi.json", "/api/cf"],
     })
   );
 }
@@ -27,6 +28,7 @@ if (process.env.CACHE_URL) {
 // OpenAPI spec and Swagger UI
 app.get("/api/openapi.json", (c) => c.json(openApiSpec));
 app.get("/api", swaggerUI({ url: "/api/openapi.json" }));
+app.get("/api/cf", (c) => c.json(convertToOas3_0(openApiSpec)));
 
 app.route("/api/health", createHealthRouter(db));
 app.route("/api/projects", createProjectsRouter(db));
