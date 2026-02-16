@@ -138,6 +138,7 @@ export function createProjectsRouter(db: Db) {
       upstreamReadme: project.upstreamReadme ?? null,
       popularityScore: project.popularityScore ?? 0,
       lastSyncedAt: project.lastSyncedAt?.toISOString() ?? null,
+      lastBuildAt: project.lastBuildAt?.toISOString() ?? null,
       createdAt: project.createdAt?.toISOString() ?? null,
     } satisfies ProjectDetail);
   });

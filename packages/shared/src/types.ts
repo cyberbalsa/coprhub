@@ -27,6 +27,7 @@ export interface ProjectDetail extends ProjectSummary {
   discourseReplies: number;
   upstreamReadme: string | null;
   lastSyncedAt: string | null;
+  lastBuildAt: string | null;
   createdAt: string | null;
 }
 
