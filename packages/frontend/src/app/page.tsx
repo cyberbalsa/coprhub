@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
   const [popular, recent, categoriesRes] = await Promise.all([
-    getProjects({ sort: "stars", limit: 12 }),
+    getProjects({ sort: "popularity", limit: 12 }),
     getProjects({ sort: "updated", limit: 12 }),
     getCategories(),
   ]);

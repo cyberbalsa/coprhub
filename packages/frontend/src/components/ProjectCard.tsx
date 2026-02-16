@@ -18,6 +18,14 @@ export function ProjectCard({ project }: { project: ProjectSummary }) {
             &#9733; {project.upstreamStars.toLocaleString()}
           </span>
         )}
+        {project.popularityScore > 0 && (
+          <span className="popularity">
+            &#x1f525; {project.popularityScore.toLocaleString()}
+          </span>
+        )}
+        {project.coprVotes > 0 && (
+          <span className="votes">&#128077; {project.coprVotes}</span>
+        )}
         {project.upstreamLanguage && (
           <span className="language">{project.upstreamLanguage}</span>
         )}
