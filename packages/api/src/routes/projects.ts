@@ -15,7 +15,7 @@ export function createProjectsRouter(db: Db) {
   router.get("/", async (c) => {
     const query: ProjectsQuery = {
       q: c.req.query("q"),
-      sort: (c.req.query("sort") as ProjectsQuery["sort"]) || "stars",
+      sort: (c.req.query("sort") as ProjectsQuery["sort"]) || "popularity",
       order: (c.req.query("order") as ProjectsQuery["order"]) || "desc",
       category: c.req.query("category"),
       owner: c.req.query("owner"),
@@ -35,12 +35,18 @@ export function createProjectsRouter(db: Db) {
 
     const where = conditions.length > 0 ? and(...conditions) : undefined;
 
-    const orderMap = {
+    const orderMap: Record<string, any> = {
+      popularity: projects.popularityScore,
       stars: projects.upstreamStars,
+      votes: projects.coprVotes,
+      downloads: projects.coprDownloads,
+      likes: projects.discourseLikes,
+      views: projects.discourseViews,
+      replies: projects.discourseReplies,
       name: projects.fullName,
       updated: projects.updatedAt,
     };
-    const orderCol = orderMap[query.sort || "stars"];
+    const orderCol = orderMap[query.sort || "popularity"] ?? projects.popularityScore;
     const orderDir = query.order === "asc" ? asc(orderCol) : desc(orderCol);
     const offset = ((query.page || 1) - 1) * (query.limit || 24);
 
@@ -56,6 +62,9 @@ export function createProjectsRouter(db: Db) {
           upstreamProvider: projects.upstreamProvider,
           upstreamStars: projects.upstreamStars,
           upstreamLanguage: projects.upstreamLanguage,
+          popularityScore: projects.popularityScore,
+          coprVotes: projects.coprVotes,
+          coprDownloads: projects.coprDownloads,
         })
         .from(projects)
         .where(where)
@@ -111,6 +120,14 @@ export function createProjectsRouter(db: Db) {
       upstreamDescription: project.upstreamDescription,
       upstreamLanguage: project.upstreamLanguage,
       upstreamTopics: project.upstreamTopics,
+      coprVotes: project.coprVotes ?? 0,
+      coprDownloads: project.coprDownloads ?? 0,
+      coprRepoEnables: project.coprRepoEnables ?? 0,
+      discourseLikes: project.discourseLikes ?? 0,
+      discourseViews: project.discourseViews ?? 0,
+      discourseReplies: project.discourseReplies ?? 0,
+      upstreamReadme: project.upstreamReadme ?? null,
+      popularityScore: project.popularityScore ?? 0,
       lastSyncedAt: project.lastSyncedAt?.toISOString() ?? null,
       createdAt: project.createdAt?.toISOString() ?? null,
     } satisfies ProjectDetail);
