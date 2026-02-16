@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { fetchGitHubStars, fetchGitLabStars } from "./stars-sync.js";
+import { fetchGitHubStars, fetchGitLabStars, fetchGitHubReadme } from "./stars-sync.js";
 
 describe("fetchGitHubStars", () => {
   it("extracts stargazers_count from GitHub API response", async () => {
@@ -53,5 +53,34 @@ describe("fetchGitLabStars", () => {
     const result = await fetchGitLabStars("gitlab.com", "fdroid/fdroidclient");
     expect(result?.stars).toBe(2100);
     expect(result?.forks).toBe(450);
+  });
+});
+
+describe("fetchGitHubReadme", () => {
+  it("fetches raw README content", async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      text: () => Promise.resolve("# My Project\n\nDescription here"),
+    });
+
+    const result = await fetchGitHubReadme("owner", "repo");
+    expect(result).toBe("# My Project\n\nDescription here");
+  });
+
+  it("truncates README to 5KB", async () => {
+    const longContent = "x".repeat(10000);
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      text: () => Promise.resolve(longContent),
+    });
+
+    const result = await fetchGitHubReadme("owner", "repo");
+    expect(result?.length).toBe(5120);
+  });
+
+  it("returns null on 404", async () => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 404 });
+    const result = await fetchGitHubReadme("owner", "repo");
+    expect(result).toBeNull();
   });
 });

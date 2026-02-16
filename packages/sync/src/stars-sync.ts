@@ -4,6 +4,8 @@ import { parseUpstreamUrl } from "@coprhub/shared";
 import type { Db } from "@coprhub/shared";
 import { USER_AGENT } from "./user-agent.js";
 
+const MAX_README_SIZE = 5 * 1024; // 5KB
+
 export interface UpstreamMeta {
   stars: number;
   forks: number;
@@ -61,6 +63,38 @@ export async function fetchGitLabStars(host: string, projectPath: string): Promi
   };
 }
 
+export async function fetchGitHubReadme(owner: string, repo: string): Promise<string | null> {
+  const headers: Record<string, string> = {
+    Accept: "application/vnd.github.raw+json",
+    "User-Agent": USER_AGENT,
+  };
+  if (GITHUB_TOKEN) {
+    headers["Authorization"] = `Bearer ${GITHUB_TOKEN}`;
+  }
+
+  const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/readme`, { headers });
+  if (!res.ok) return null;
+
+  const text = await res.text();
+  return text.length > MAX_README_SIZE ? text.slice(0, MAX_README_SIZE) : text;
+}
+
+export async function fetchGitLabReadme(host: string, projectPath: string): Promise<string | null> {
+  const encodedPath = encodeURIComponent(projectPath);
+  for (const filename of ["README.md", "readme.md"]) {
+    const encodedFile = encodeURIComponent(filename);
+    const res = await fetch(
+      `https://${host}/api/v4/projects/${encodedPath}/repository/files/${encodedFile}/raw?ref=HEAD`,
+      { headers: { "User-Agent": USER_AGENT } }
+    );
+    if (res.ok) {
+      const text = await res.text();
+      return text.length > MAX_README_SIZE ? text.slice(0, MAX_README_SIZE) : text;
+    }
+  }
+  return null;
+}
+
 export async function syncAllStars(db: Db): Promise<number> {
   console.log("Starting star sync...");
 
@@ -88,6 +122,15 @@ export async function syncAllStars(db: Db): Promise<number> {
       meta = await fetchGitLabStars(host, `${parsed.owner}/${parsed.repo}`);
     }
 
+    // Fetch README
+    let readme: string | null = null;
+    if (parsed.provider === "github") {
+      readme = await fetchGitHubReadme(parsed.owner, parsed.repo);
+    } else if (parsed.provider === "gitlab") {
+      const host = new URL(project.upstreamUrl!).host;
+      readme = await fetchGitLabReadme(host, `${parsed.owner}/${parsed.repo}`);
+    }
+
     if (meta) {
       await db
         .update(projects)
@@ -97,6 +140,8 @@ export async function syncAllStars(db: Db): Promise<number> {
           upstreamLanguage: meta.language,
           upstreamDescription: meta.description,
           upstreamTopics: meta.topics,
+          upstreamReadme: readme,
+          readmeSyncedAt: new Date(),
           starsSyncedAt: new Date(),
         })
         .where(eq(projects.id, project.id));
