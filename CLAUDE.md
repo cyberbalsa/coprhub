@@ -98,6 +98,7 @@ Constants and formula defined in `packages/sync/src/popularity.ts`. SQL equivale
 All routes prefixed with `/api`:
 - `GET /api` - Swagger UI
 - `GET /api/openapi.json` - OpenAPI 3.1.0 spec
+- `GET /api/cf` - Cloudflare API Shield-compatible OpenAPI 3.0.0 spec (auto-converted from 3.1.0)
 - `GET /api/projects` - List/search projects (see filtering/sorting below)
 - `GET /api/projects/:owner/:name` - Project detail (all DB fields exposed)
 - `GET /api/projects/:owner/:name/packages` - RPM packages for a project
@@ -125,7 +126,7 @@ A Hono middleware (`packages/api/src/cache.ts`) caches all GET API responses in 
 - **Cache key:** `api:GET:{path}?{sorted-query-params}` — query params sorted alphabetically for normalization
 - **Compression:** Bun built-in `gzipSync`/`gunzipSync` (native `@napi-rs/zstd` doesn't work in Bun Docker containers)
 - **Headers:** `Cache-Control: public, max-age=14400, s-maxage=14400, stale-while-revalidate=3600` + `X-Cache: HIT|MISS`
-- **Excluded:** `/api/health` and `/api/openapi.json` get `Cache-Control: no-store`
+- **Excluded:** `/api/health`, `/api/openapi.json`, and `/api/cf` get `Cache-Control: no-store`
 - **Non-2xx responses are never cached** — only successful responses are stored
 - **Graceful degradation:** if pogocache is down, requests fall through to PostgreSQL transparently
 - **Conditional activation:** middleware only mounts when `CACHE_URL` env var is set (tests run without cache)
