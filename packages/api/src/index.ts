@@ -14,6 +14,16 @@ export const app = new Hono();
 app.use("*", logger());
 app.use("*", cors());
 
+if (process.env.CACHE_URL) {
+  const { createCacheMiddleware } = await import("./cache.js");
+  app.use(
+    "/api/*",
+    createCacheMiddleware(process.env.CACHE_URL, {
+      excludePaths: ["/api/health", "/api/openapi.json"],
+    })
+  );
+}
+
 // OpenAPI spec and Swagger UI
 app.get("/api/openapi.json", (c) => c.json(openApiSpec));
 app.get("/api", swaggerUI({ url: "/api/openapi.json" }));

@@ -15,6 +15,7 @@
     "@hono/swagger-ui": "^0.5.3",
     "drizzle-orm": "^0.39.0",
     "hono": "^4.7.0",
+    "ioredis": "^5.9.3",
     "postgres": "^3.4.0"
   },
   "devDependencies": {
