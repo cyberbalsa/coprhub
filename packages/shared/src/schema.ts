@@ -45,6 +45,7 @@ export const projects = pgTable(
     searchVector: text("search_vector"),
     lastSyncedAt: timestamp("last_synced_at"),
     starsSyncedAt: timestamp("stars_synced_at"),
+    discourseSyncedAt: timestamp("discourse_synced_at"),
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at").defaultNow(),
   },
@@ -74,6 +75,12 @@ export const discourseCache = pgTable("discourse_cache", {
     .primaryKey(),
   data: jsonb("data").notNull(),
   fetchedAt: timestamp("fetched_at").defaultNow().notNull(),
+});
+
+export const syncJobs = pgTable("sync_jobs", {
+  jobName: text("job_name").primaryKey(),
+  lastCompletedAt: timestamp("last_completed_at").notNull(),
+  durationMs: integer("duration_ms"),
 });
 
 export const categories = pgTable("categories", {
