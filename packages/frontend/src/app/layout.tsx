@@ -18,6 +18,7 @@ export default function RootLayout({
           <nav>
             <a href="/">COPRHub</a>
             <a href="/search">Browse</a>
+            <a href="https://api.coprhub.org/api" target="_blank" rel="noopener noreferrer">API</a>
           </nav>
         </header>
         <main>{children}</main>

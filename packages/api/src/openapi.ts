@@ -14,6 +14,10 @@ export const openApiSpec = {
       url: "/",
       description: "Current server",
     },
+    {
+      url: "https://api.coprhub.org",
+      description: "Production",
+    },
   ],
   tags: [
     { name: "Projects", description: "COPR project listing, search, and detail" },

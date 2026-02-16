@@ -63,13 +63,13 @@ A Flathub-style web store for [Fedora COPR](https://copr.fedorainfracloud.org/) 
 
 4. Initialize the database (first time only):
    ```bash
-   # Push the Drizzle schema
-   DATABASE_URL="postgresql://copr:yourpassword@localhost:5432/coprhub" \
-     bunx drizzle-kit push --config packages/shared/drizzle.config.ts
+   # Push the Drizzle schema (run inside API container)
+   podman exec -w /app/packages/shared copr-index_api_1 \
+     bunx drizzle-kit push --config drizzle.config.ts
 
    # Apply the full-text search migration
-   psql postgresql://copr:yourpassword@localhost:5432/coprhub \
-     -f packages/shared/drizzle/0001_search_vector.sql
+   podman exec -i copr-index_postgres_1 \
+     psql -U copr -d coprhub < packages/shared/drizzle/0001_search_vector.sql
    ```
 
 5. The sync worker starts automatically and begins indexing COPR projects. Access the site at:

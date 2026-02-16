@@ -49,12 +49,15 @@ podman-compose logs -f <svc>   # Follow logs (api, frontend, sync-worker, postgr
 podman-compose down            # Stop everything
 ```
 
-After first start, initialize the database:
+After first start, initialize the database (run inside containers):
 ```bash
-DATABASE_URL="postgresql://copr:devpassword@localhost:5432/coprhub" \
-  bunx drizzle-kit push --config packages/shared/drizzle.config.ts
-psql postgresql://copr:devpassword@localhost:5432/coprhub \
-  -f packages/shared/drizzle/0001_search_vector.sql
+# Push the Drizzle schema
+podman exec -w /app/packages/shared copr-index_api_1 \
+  bunx drizzle-kit push --config drizzle.config.ts
+
+# Apply the full-text search migration
+podman exec -i copr-index_postgres_1 \
+  psql -U copr -d coprhub < packages/shared/drizzle/0001_search_vector.sql
 ```
 
 ## Key Architectural Decisions
@@ -94,7 +97,7 @@ Runs two cron jobs:
 1. **COPR sync** (every 6h) - fetches all projects and packages from COPR API v3
 2. **Star sync** (every 12h) - fetches GitHub/GitLab stars for projects with detected upstream URLs
 
-User-Agent for all external API calls: `FedoraCOPRHub/1.0 <Repo: github.com/cyberbalsa/coprhub>`
+User-Agent for all external API calls: `COPRHub/1.0 (https://coprhub.org; github.com/cyberbalsa/coprhub)`
 
 ## Testing
 
