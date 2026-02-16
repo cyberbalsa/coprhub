@@ -14,6 +14,21 @@ export const WEIGHTS = {
   discourseViews: 2,
 } as const;
 
+export const STALENESS = {
+  gracePeriodDays: 7,
+  decayRate: 3.0,
+  decayWindowDays: 83,  // 90 - 7 (grace period)
+  minMultiplier: 0.05,
+} as const;
+
+export function computeStalenessMultiplier(lastBuildAt: Date | null, now: Date = new Date()): number {
+  if (!lastBuildAt) return 1.0;
+  const daysSinceBuild = (now.getTime() - lastBuildAt.getTime()) / (1000 * 60 * 60 * 24);
+  if (daysSinceBuild <= STALENESS.gracePeriodDays) return 1.0;
+  const d = daysSinceBuild - STALENESS.gracePeriodDays;
+  return Math.max(STALENESS.minMultiplier, Math.exp(-STALENESS.decayRate * d / STALENESS.decayWindowDays));
+}
+
 export interface PopularityInput {
   stars: number;
   votes: number;
