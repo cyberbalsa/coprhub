@@ -102,6 +102,13 @@ const AGG_SQL = `
   WHERE cc.deleted = false
   GROUP BY cc.copr_id;
   CREATE INDEX agg_chroots_idx ON agg_chroots(copr_id);
+
+  CREATE TABLE agg_last_build AS
+  SELECT copr_id, MAX(ended_on) as last_build
+  FROM build
+  WHERE ended_on IS NOT NULL
+  GROUP BY copr_id;
+  CREATE INDEX agg_last_build_idx ON agg_last_build(copr_id);
 `;
 
 export async function syncFromDump(db: Db, options: SyncOptions): Promise<void> {
@@ -151,7 +158,7 @@ export async function syncFromDump(db: Db, options: SyncOptions): Promise<void> 
     await db.execute(sql`CREATE EXTENSION IF NOT EXISTS dblink`);
 
     await db.execute(sql`
-      INSERT INTO projects (copr_id, owner, name, full_name, description, instructions, homepage, repo_url, chroots, copr_votes, copr_downloads, copr_repo_enables, votes_synced_at, last_synced_at, updated_at)
+      INSERT INTO projects (copr_id, owner, name, full_name, description, instructions, homepage, repo_url, chroots, copr_votes, copr_downloads, copr_repo_enables, last_build_at, votes_synced_at, last_synced_at, updated_at)
       SELECT
         copr_id, owner, name, full_name, description, instructions, homepage,
         'https://copr.fedorainfracloud.org/coprs/' || full_name || '/' as repo_url,
@@ -159,6 +166,7 @@ export async function syncFromDump(db: Db, options: SyncOptions): Promise<void> 
         COALESCE(votes, 0)::int,
         COALESCE(downloads, 0)::int,
         COALESCE(repo_enables, 0)::int,
+        last_build_at,
         NOW(), NOW(), NOW()
       FROM dblink(
         ${`dbname=${TEMP_DB} user=copr`},
@@ -174,19 +182,22 @@ export async function syncFromDump(db: Db, options: SyncOptions): Promise<void> 
           COALESCE(ch.chroots, '[]') as chroots,
           v.net_votes as votes,
           dl.downloads,
-          re.repo_enables
+          re.repo_enables,
+          lb.last_build as last_build_at
         FROM copr c
         JOIN copr_dir d ON d.copr_id = c.id AND d.main = true
         LEFT JOIN agg_chroots ch ON ch.copr_id = c.id
         LEFT JOIN agg_votes v ON v.copr_id = c.id
         LEFT JOIN agg_downloads dl ON dl.full_name = d.ownername || '/' || c.name
         LEFT JOIN agg_repo_enables re ON re.full_name = d.ownername || '/' || c.name
+        LEFT JOIN agg_last_build lb ON lb.copr_id = c.id
         WHERE c.deleted = false
         $dbq$
       ) AS t(
         copr_id int, owner text, name text, full_name text,
         description text, instructions text, homepage text,
-        chroots text, votes int, downloads bigint, repo_enables bigint
+        chroots text, votes int, downloads bigint, repo_enables bigint,
+        last_build_at timestamp
       )
       ON CONFLICT (copr_id) DO UPDATE SET
         owner = EXCLUDED.owner,
@@ -200,6 +211,7 @@ export async function syncFromDump(db: Db, options: SyncOptions): Promise<void> 
         copr_votes = EXCLUDED.copr_votes,
         copr_downloads = EXCLUDED.copr_downloads,
         copr_repo_enables = EXCLUDED.copr_repo_enables,
+        last_build_at = EXCLUDED.last_build_at,
         votes_synced_at = EXCLUDED.votes_synced_at,
         last_synced_at = EXCLUDED.last_synced_at,
         updated_at = EXCLUDED.updated_at
@@ -293,7 +305,7 @@ export async function syncFromDump(db: Db, options: SyncOptions): Promise<void> 
     // 7. Recompute popularity scores
     console.log("Recomputing popularity scores...");
     await db.execute(sql`
-      UPDATE projects SET popularity_score =
+      UPDATE projects SET popularity_score = (
         (COALESCE(upstream_stars, 0) * 10) +
         (COALESCE(copr_votes, 0) * 5) +
         LEAST(COALESCE(copr_downloads, 0) * 0.01, 1000)::integer +
@@ -301,6 +313,15 @@ export async function syncFromDump(db: Db, options: SyncOptions): Promise<void> 
         (COALESCE(discourse_likes, 0) * 3) +
         (COALESCE(discourse_replies, 0) * 1) +
         (ln(greatest(COALESCE(discourse_views, 0), 1)) * 2)::integer
+      ) * (
+        CASE
+          WHEN last_build_at IS NULL THEN 1.0
+          WHEN EXTRACT(EPOCH FROM (NOW() - last_build_at)) / 86400.0 <= 7 THEN 1.0
+          ELSE GREATEST(0.05,
+            EXP(-3.0 * (EXTRACT(EPOCH FROM (NOW() - last_build_at)) / 86400.0 - 7) / 83.0)
+          )
+        END
+      )
     `);
     console.log("Popularity scores recomputed.");
 
