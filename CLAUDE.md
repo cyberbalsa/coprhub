@@ -140,10 +140,11 @@ A Hono middleware (`packages/api/src/cache.ts`) caches all GET API responses in 
 
 ## Sync Worker
 
-Runs three sync jobs on configurable intervals:
+Runs four sync jobs on configurable intervals:
 1. **Dump sync** (every 24h) - imports COPR database dump with all projects, packages, votes, downloads, and last build dates; recomputes popularity scores with staleness decay
 2. **Star sync** (every 12h) - fetches GitHub/GitLab stars for projects with detected upstream URLs
 3. **Discourse sync** (every 24h) - fetches Discourse topic stats (likes, views, replies)
+4. **Category sync** (every 7d) - downloads AppStream metadata from Flathub, openSUSE, Debian, Ubuntu; cross-references package names; classifies remaining projects via keyword heuristics and LLM (qwen3:8b)
 
 All sync workers have per-project or job-level TTL checks — on restart, they skip recently-synced work instead of re-fetching everything.
 
@@ -172,3 +173,8 @@ See `.env.example`. Key vars:
 - `FORCE_SYNC` - Set to `true` to bypass all TTL checks
 - `CACHE_URL` - Redis URL for pogocache (e.g., `redis://localhost:9401`; omit to disable caching)
 - `CLOUDFLARED_TUNNEL_TOKEN` - Cloudflare tunnel token for production
+- `CATEGORY_SYNC_INTERVAL_HOURS` - Hours between category sync runs (default: 168 = 7 days)
+- `CATEGORY_SYNC_TTL_HOURS` - Hours before category sync can re-run (default: matches interval)
+- `LLM_API_URL` - OpenAI-compatible endpoint for LLM classification
+- `LLM_API_KEY` - API key for LLM endpoint
+- `LLM_MODEL` - Model name for classification (default: qwen3:8b)
