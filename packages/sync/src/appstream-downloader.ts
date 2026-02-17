@@ -1,11 +1,13 @@
 import { existsSync, mkdirSync, statSync } from "node:fs";
 import { readFile, writeFile } from "node:fs/promises";
-import { gunzipSync } from "bun";
-import { join } from "node:path";
+import { gunzipSync } from "node:zlib";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { USER_AGENT } from "./user-agent.js";
 import { parseAppStreamXml, parseAppStreamYaml, type AppStreamEntry } from "./appstream-parser.js";
 
-const CACHE_DIR = join(import.meta.dir, "../../../../data/appstream");
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const CACHE_DIR = join(__dirname, "../../../../data/appstream");
 const MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 interface AppStreamSource {
