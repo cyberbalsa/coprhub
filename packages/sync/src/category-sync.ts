@@ -92,12 +92,25 @@ export async function syncCategories(db: Db, options: SyncOptions) {
     : null;
 
   const stats = { appstream: 0, heuristic: 0, llm: 0, failed: 0 };
+  const LLM_CONCURRENCY = 5;
 
-  // Step 4: Classify each project
+  // Helper to write a classification result to the DB
+  async function writeResult(projectId: number, slug: string, source: "appstream" | "heuristic" | "llm") {
+    const categoryId = slugToId.get(slug);
+    if (categoryId) {
+      await db.delete(projectCategories).where(eq(projectCategories.projectId, projectId));
+      await db.insert(projectCategories).values({ projectId, categoryId, source });
+    }
+    await db.update(projects).set({ categorySyncedAt: new Date() }).where(eq(projects.id, projectId));
+    stats[source]++;
+  }
+
+  // Step 4a: Fast tiers (AppStream + heuristics) — sequential
+  const needsLlm: typeof projectsToClassify = [];
+
   for (let i = 0; i < projectsToClassify.length; i++) {
     const project = projectsToClassify[i];
     let slug: string | null = null;
-    let source: "appstream" | "heuristic" | "llm" = "llm";
 
     // Tier 1: AppStream cross-reference
     const pkgNames = projectPackageNames.get(project.id) ?? [project.name];
@@ -105,81 +118,77 @@ export async function syncCategories(db: Db, options: SyncOptions) {
       const fdCategories = appstreamMap.get(pkgName);
       if (fdCategories) {
         slug = mapFreeDesktopCategories(fdCategories);
-        if (slug) {
-          source = "appstream";
-          break;
-        }
+        if (slug) break;
       }
+    }
+
+    if (slug) {
+      await writeResult(project.id, slug, "appstream");
+      continue;
     }
 
     // Tier 2: Heuristics
-    if (!slug) {
-      const meta: ProjectMetadata = {
-        name: project.name,
-        owner: project.owner,
-        description: project.description,
-        upstreamTopics: project.upstreamTopics,
-        upstreamLanguage: project.upstreamLanguage,
-        homepage: project.homepage,
-      };
-      slug = classifyByHeuristics(meta);
-      if (slug) source = "heuristic";
+    const meta: ProjectMetadata = {
+      name: project.name,
+      owner: project.owner,
+      description: project.description,
+      upstreamTopics: project.upstreamTopics,
+      upstreamLanguage: project.upstreamLanguage,
+      homepage: project.homepage,
+    };
+    slug = classifyByHeuristics(meta);
+
+    if (slug) {
+      await writeResult(project.id, slug, "heuristic");
+      continue;
     }
 
-    // Tier 3: LLM classification
-    if (!slug && llmClassifier) {
-      try {
-        const result = await llmClassifier.classify({
-          name: `${project.owner}/${project.name}`,
-          description: project.description,
-          upstreamLanguage: project.upstreamLanguage,
-          upstreamTopics: project.upstreamTopics,
-          homepage: project.homepage,
-        });
-        slug = result.category;
-        source = "llm";
-      } catch (err) {
-        console.warn(`LLM failed for ${project.owner}/${project.name}: ${err}`);
-        stats.failed++;
+    // Needs LLM or fallback
+    needsLlm.push(project);
+  }
+
+  console.log(`  Fast tiers done: AppStream ${stats.appstream}, Heuristic ${stats.heuristic}. LLM queue: ${needsLlm.length}`);
+
+  // Step 4b: LLM tier — concurrent batches of LLM_CONCURRENCY
+  if (llmClassifier && needsLlm.length > 0) {
+    for (let i = 0; i < needsLlm.length; i += LLM_CONCURRENCY) {
+      const batch = needsLlm.slice(i, i + LLM_CONCURRENCY);
+
+      const results = await Promise.allSettled(
+        batch.map(async (project) => {
+          const result = await llmClassifier.classify({
+            name: `${project.owner}/${project.name}`,
+            description: project.description,
+            upstreamLanguage: project.upstreamLanguage,
+            upstreamTopics: project.upstreamTopics,
+            homepage: project.homepage,
+          });
+          return { project, slug: result.category };
+        }),
+      );
+
+      for (let j = 0; j < results.length; j++) {
+        const result = results[j];
+        const project = batch[j];
+        if (result.status === "fulfilled") {
+          await writeResult(project.id, result.value.slug, "llm");
+        } else {
+          console.warn(`LLM failed for ${project.owner}/${project.name}: ${result.reason}`);
+          stats.failed++;
+          await writeResult(project.id, "utilities", "heuristic");
+        }
       }
 
-      // Small delay between LLM requests
-      if (i < projectsToClassify.length - 1) {
-        await new Promise((r) => setTimeout(r, 100));
+      // Progress log every 500 LLM calls
+      const done = Math.min(i + LLM_CONCURRENCY, needsLlm.length);
+      if (done % 500 === 0 || done === needsLlm.length) {
+        console.log(`  LLM progress: ${done}/${needsLlm.length} (llm: ${stats.llm}, failed: ${stats.failed})`);
       }
     }
-
-    // Fallback if no LLM configured and no other match
-    if (!slug) {
-      slug = "utilities";
-      source = "heuristic";
-    }
-
-    // Write result
-    const categoryId = slugToId.get(slug);
-    if (categoryId) {
-      // Delete existing assignment
-      await db
-        .delete(projectCategories)
-        .where(eq(projectCategories.projectId, project.id));
-
-      // Insert new assignment
-      await db
-        .insert(projectCategories)
-        .values({ projectId: project.id, categoryId, source });
-    }
-
-    // Update categorySyncedAt
-    await db
-      .update(projects)
-      .set({ categorySyncedAt: new Date() })
-      .where(eq(projects.id, project.id));
-
-    stats[source]++;
-
-    // Progress log every 1000 projects
-    if ((i + 1) % 1000 === 0) {
-      console.log(`  Progress: ${i + 1}/${projectsToClassify.length} (appstream: ${stats.appstream}, heuristic: ${stats.heuristic}, llm: ${stats.llm})`);
+  } else if (needsLlm.length > 0) {
+    // No LLM configured — fallback all to utilities
+    for (const project of needsLlm) {
+      await writeResult(project.id, "utilities", "heuristic");
     }
   }
 
