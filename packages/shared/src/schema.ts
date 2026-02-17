@@ -49,6 +49,7 @@ export const projects = pgTable(
     discourseSyncedAt: timestamp("discourse_synced_at"),
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at").defaultNow(),
+    categorySyncedAt: timestamp("category_synced_at"),
   },
   (table) => [
     uniqueIndex("projects_owner_name_idx").on(table.owner, table.name),
@@ -99,6 +100,7 @@ export const projectCategories = pgTable(
     categoryId: integer("category_id")
       .references(() => categories.id, { onDelete: "cascade" })
       .notNull(),
+    source: text("source").notNull().default("llm"),
   },
   (table) => [primaryKey({ columns: [table.projectId, table.categoryId] })]
 );
