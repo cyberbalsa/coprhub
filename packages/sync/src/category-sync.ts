@@ -69,18 +69,21 @@ export async function syncCategories(db: Db, options: SyncOptions) {
     return;
   }
 
-  // Pre-fetch all package names for these projects
+  // Pre-fetch all package names for these projects (batched to avoid PostgreSQL ROW limit)
   const projectIds = projectsToClassify.map((p) => p.id);
-  const allPackages = await db
-    .select({ projectId: packagesTable.projectId, name: packagesTable.name })
-    .from(packagesTable)
-    .where(sql`${packagesTable.projectId} = ANY(${projectIds})`);
-
   const projectPackageNames = new Map<number, string[]>();
-  for (const pkg of allPackages) {
-    const names = projectPackageNames.get(pkg.projectId) ?? [];
-    names.push(pkg.name);
-    projectPackageNames.set(pkg.projectId, names);
+  const BATCH_SIZE = 1000;
+  for (let i = 0; i < projectIds.length; i += BATCH_SIZE) {
+    const batch = projectIds.slice(i, i + BATCH_SIZE);
+    const pkgs = await db
+      .select({ projectId: packagesTable.projectId, name: packagesTable.name })
+      .from(packagesTable)
+      .where(sql`${packagesTable.projectId} = ANY(${batch})`);
+    for (const pkg of pkgs) {
+      const names = projectPackageNames.get(pkg.projectId) ?? [];
+      names.push(pkg.name);
+      projectPackageNames.set(pkg.projectId, names);
+    }
   }
 
   // Create LLM classifier if endpoint is configured

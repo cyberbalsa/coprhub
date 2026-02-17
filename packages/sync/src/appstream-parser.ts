@@ -9,6 +9,8 @@ export interface AppStreamEntry {
 /**
  * Parse AppStream XML (used by Fedora, openSUSE, Flathub).
  * Extracts desktop/desktop-application components with pkgname and categories.
+ * For Flathub (Flatpak), falls back to the last segment of the component ID
+ * when pkgname is absent (e.g., "org.mozilla.firefox" → "firefox").
  */
 export async function parseAppStreamXml(xmlContent: string): Promise<AppStreamEntry[]> {
   const parsed = await parseStringPromise(xmlContent, { explicitArray: true });
@@ -19,9 +21,21 @@ export async function parseAppStreamXml(xmlContent: string): Promise<AppStreamEn
     const type = comp.$?.type;
     if (type !== "desktop" && type !== "desktop-application") continue;
 
-    const pkgname = comp.pkgname?.[0];
     const categories = comp.categories?.[0]?.category ?? [];
-    if (!pkgname || categories.length === 0) continue;
+    if (categories.length === 0) continue;
+
+    // Prefer pkgname (distro packages), fall back to last segment of component ID (Flatpak)
+    let pkgname = comp.pkgname?.[0];
+    if (!pkgname) {
+      const id = comp.id?.[0];
+      if (typeof id === "string") {
+        // "org.mozilla.firefox.desktop" → "firefox"
+        const cleaned = id.replace(/\.desktop$/, "");
+        const parts = cleaned.split(".");
+        pkgname = parts[parts.length - 1];
+      }
+    }
+    if (!pkgname) continue;
 
     entries.push({ packageName: pkgname, categories });
   }
@@ -32,10 +46,11 @@ export async function parseAppStreamXml(xmlContent: string): Promise<AppStreamEn
 /**
  * Parse AppStream DEP-11 YAML (used by Debian, Ubuntu).
  * Multi-document YAML with --- separators.
+ * Uses json mode to tolerate duplicate keys in translation sections.
  */
 export function parseAppStreamYaml(yamlContent: string): AppStreamEntry[] {
   const entries: AppStreamEntry[] = [];
-  const docs = yaml.loadAll(yamlContent) as any[];
+  const docs = yaml.loadAll(yamlContent, undefined, { json: true }) as any[];
 
   for (const doc of docs) {
     if (!doc || typeof doc !== "object") continue;

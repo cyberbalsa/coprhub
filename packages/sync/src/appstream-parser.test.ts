@@ -21,6 +21,14 @@ const SAMPLE_XML = `<?xml version="1.0" encoding="UTF-8"?>
       <category>RevisionControl</category>
     </categories>
   </component>
+  <component type="desktop-application">
+    <id>org.mozilla.firefox</id>
+    <name>Firefox Flatpak</name>
+    <categories>
+      <category>Network</category>
+      <category>WebBrowser</category>
+    </categories>
+  </component>
   <component type="addon">
     <id>some-addon</id>
     <name>Addon</name>
@@ -54,7 +62,7 @@ Categories:
 describe("parseAppStreamXml", () => {
   it("extracts desktop components with pkgname and categories", async () => {
     const entries = await parseAppStreamXml(SAMPLE_XML);
-    expect(entries).toHaveLength(2);
+    expect(entries).toHaveLength(3);
     expect(entries[0]).toEqual({
       packageName: "firefox",
       categories: ["Network", "WebBrowser"],
@@ -65,7 +73,16 @@ describe("parseAppStreamXml", () => {
     });
   });
 
-  it("skips components without pkgname", async () => {
+  it("falls back to component ID last segment when no pkgname (Flatpak)", async () => {
+    const entries = await parseAppStreamXml(SAMPLE_XML);
+    // org.mozilla.firefox → "firefox"
+    expect(entries[2]).toEqual({
+      packageName: "firefox",
+      categories: ["Network", "WebBrowser"],
+    });
+  });
+
+  it("skips components without pkgname or ID", async () => {
     const entries = await parseAppStreamXml(SAMPLE_XML);
     const addon = entries.find((e) => e.packageName === "some-addon");
     expect(addon).toBeUndefined();
