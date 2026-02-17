@@ -1,4 +1,4 @@
-import { sql, eq } from "drizzle-orm";
+import { sql, eq, inArray } from "drizzle-orm";
 import type { Db } from "@coprhub/shared";
 import { projects, packages as packagesTable, categories, projectCategories, syncJobs } from "@coprhub/shared";
 import { shouldSkipSync, type SyncOptions } from "./ttl.js";
@@ -78,7 +78,7 @@ export async function syncCategories(db: Db, options: SyncOptions) {
     const pkgs = await db
       .select({ projectId: packagesTable.projectId, name: packagesTable.name })
       .from(packagesTable)
-      .where(sql`${packagesTable.projectId} = ANY(${batch})`);
+      .where(inArray(packagesTable.projectId, batch));
     for (const pkg of pkgs) {
       const names = projectPackageNames.get(pkg.projectId) ?? [];
       names.push(pkg.name);
