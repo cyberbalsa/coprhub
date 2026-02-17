@@ -20,7 +20,7 @@ if (process.env.CACHE_URL) {
   app.use(
     "/api/*",
     createCacheMiddleware(process.env.CACHE_URL, {
-      excludePaths: ["/api/health", "/api/openapi.json", "/api/cf"],
+      excludePaths: ["/api", "/api/health", "/api/openapi.json", "/api/cf"],
     })
   );
 }

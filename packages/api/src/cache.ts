@@ -64,8 +64,8 @@ export function createCacheMiddleware(
       return;
     }
 
-    // Skip excluded paths
-    if (excludePaths.some((p) => path === p || path.startsWith(p + "/"))) {
+    // Skip excluded paths (exact match only)
+    if (excludePaths.includes(path)) {
       await next();
       c.res.headers.set("Cache-Control", "no-store");
       return;
@@ -75,15 +75,23 @@ export function createCacheMiddleware(
     const cacheControl = `public, max-age=${ttl}, s-maxage=${ttl}, stale-while-revalidate=3600`;
 
     // Try cache HIT
+    // Cache format: gzip( contentType + "\n" + body )
     try {
       if (redis.status === "ready") {
         const cached = await redis.getBuffer(cacheKey);
         if (cached) {
           const decompressed = Bun.gunzipSync(cached);
-          c.res = new Response(decompressed, {
+          const buf = Buffer.from(decompressed);
+          const newlineIdx = buf.indexOf(0x0a);
+          const contentType =
+            newlineIdx > 0
+              ? buf.subarray(0, newlineIdx).toString()
+              : "application/json";
+          const body = newlineIdx > 0 ? buf.subarray(newlineIdx + 1) : buf;
+          c.res = new Response(body, {
             status: 200,
             headers: {
-              "Content-Type": "application/json",
+              "Content-Type": contentType,
               "Cache-Control": cacheControl,
               "X-Cache": "HIT",
             },
@@ -120,9 +128,13 @@ export function createCacheMiddleware(
       c.res.headers.set("Cache-Control", cacheControl);
 
       // Compress and store in Redis (fire-and-forget)
+      // Format: gzip( contentType + "\n" + body )
       if (redis.status === "ready") {
         try {
-          const compressed = Bun.gzipSync(bodyBuffer);
+          const contentType = c.res.headers.get("Content-Type") || "application/json";
+          const header = Buffer.from(contentType + "\n");
+          const payload = Buffer.concat([header, bodyBuffer]);
+          const compressed = Bun.gzipSync(payload);
           redis.set(cacheKey, Buffer.from(compressed), "EX", ttl).catch(() => {});
         } catch {
           // Compression failed — skip caching
