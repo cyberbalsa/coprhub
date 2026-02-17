@@ -63,6 +63,17 @@ export function createProjectsRouter(db: Db) {
       );
     }
 
+    // Category filter (join-based)
+    if (query.category) {
+      conditions.push(
+        sql`${projects.id} IN (
+          SELECT ${projectCategories.projectId} FROM ${projectCategories}
+          JOIN ${categories} ON ${projectCategories.categoryId} = ${categories.id}
+          WHERE ${categories.slug} = ${query.category}
+        )`
+      );
+    }
+
     const where = conditions.length > 0 ? and(...conditions) : undefined;
 
     const orderMap: Record<string, any> = {
