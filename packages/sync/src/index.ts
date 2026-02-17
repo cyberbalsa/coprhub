@@ -2,6 +2,7 @@ import { createDb } from "@coprhub/shared";
 import { syncFromDump } from "./dump-sync.js";
 import { syncAllStars } from "./stars-sync.js";
 import { syncAllDiscourseStats } from "./discourse-sync.js";
+import { syncCategories } from "./category-sync.js";
 
 const DATABASE_URL = process.env.DATABASE_URL;
 if (!DATABASE_URL) {
@@ -15,6 +16,9 @@ const DISCOURSE_SYNC_INTERVAL_HOURS = parseInt(process.env.DISCOURSE_SYNC_INTERV
 const DUMP_SYNC_TTL_HOURS = parseInt(process.env.DUMP_SYNC_TTL_HOURS || String(DUMP_SYNC_INTERVAL_HOURS), 10);
 const STARS_SYNC_TTL_HOURS = parseInt(process.env.STARS_SYNC_TTL_HOURS || String(STARS_SYNC_INTERVAL_HOURS), 10);
 const DISCOURSE_SYNC_TTL_HOURS = parseInt(process.env.DISCOURSE_SYNC_TTL_HOURS || String(DISCOURSE_SYNC_INTERVAL_HOURS), 10);
+
+const CATEGORY_SYNC_INTERVAL_HOURS = parseInt(process.env.CATEGORY_SYNC_INTERVAL_HOURS || "168", 10);
+const CATEGORY_SYNC_TTL_HOURS = parseInt(process.env.CATEGORY_SYNC_TTL_HOURS || String(CATEGORY_SYNC_INTERVAL_HOURS), 10);
 
 const FORCE_SYNC = process.env.FORCE_SYNC === "true";
 
@@ -44,12 +48,20 @@ async function runDiscourseSync() {
   }
 }
 
+async function runCategorySync() {
+  try {
+    await syncCategories(db, { ttlHours: CATEGORY_SYNC_TTL_HOURS, forceSync: FORCE_SYNC });
+  } catch (err) {
+    console.error("Category sync failed:", err);
+  }
+}
+
 console.log("Sync worker starting...");
 console.log(
-  `Intervals — Dump: ${DUMP_SYNC_INTERVAL_HOURS}h, Stars: ${STARS_SYNC_INTERVAL_HOURS}h, Discourse: ${DISCOURSE_SYNC_INTERVAL_HOURS}h`
+  `Intervals — Dump: ${DUMP_SYNC_INTERVAL_HOURS}h, Stars: ${STARS_SYNC_INTERVAL_HOURS}h, Discourse: ${DISCOURSE_SYNC_INTERVAL_HOURS}h, Category: ${CATEGORY_SYNC_INTERVAL_HOURS}h`
 );
 console.log(
-  `TTLs — Dump: ${DUMP_SYNC_TTL_HOURS}h, Stars: ${STARS_SYNC_TTL_HOURS}h, Discourse: ${DISCOURSE_SYNC_TTL_HOURS}h`
+  `TTLs — Dump: ${DUMP_SYNC_TTL_HOURS}h, Stars: ${STARS_SYNC_TTL_HOURS}h, Discourse: ${DISCOURSE_SYNC_TTL_HOURS}h, Category: ${CATEGORY_SYNC_TTL_HOURS}h`
 );
 if (FORCE_SYNC) {
   console.log("FORCE_SYNC enabled — all TTL checks bypassed");
@@ -58,9 +70,11 @@ if (FORCE_SYNC) {
 await runDumpSync();
 await runStarSync();
 await runDiscourseSync();
+await runCategorySync();
 
 setInterval(runDumpSync, DUMP_SYNC_INTERVAL_HOURS * 60 * 60 * 1000);
 setInterval(runStarSync, STARS_SYNC_INTERVAL_HOURS * 60 * 60 * 1000);
 setInterval(runDiscourseSync, DISCOURSE_SYNC_INTERVAL_HOURS * 60 * 60 * 1000);
+setInterval(runCategorySync, CATEGORY_SYNC_INTERVAL_HOURS * 60 * 60 * 1000);
 
 console.log("Sync worker running. Waiting for next interval...");
